@@ -4,7 +4,10 @@ import {
   Building2,
   Check,
   Clipboard,
+  BookOpen,
   HelpCircle,
+  Home,
+  MessageCircle,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -94,6 +97,26 @@ function PrivacyNote() {
   );
 }
 
+function PartnerSidebar({ account, onNavigate }) {
+  const role = account?.membership?.role;
+  const canManage = ["owner", "admin", "manager"].includes(role);
+  return <aside className="partner-sidebar">
+    <div className="sidebar-brand"><div className="sidebar-mark">✦</div><div><b>North Star</b><span>Partner workspace</span></div></div>
+    <nav className="partner-nav" aria-label="Partner workspace navigation">
+      <button className="partner-nav-item active" onClick={() => onNavigate("overview")}><Home size={18} /> Overview</button>
+      <div className="partner-nav-label">WORKSPACE</div>
+      <button className="partner-nav-item" onClick={() => onNavigate("invite")}><Users size={18} /> Invite participant</button>
+      <button className="partner-nav-item" onClick={() => onNavigate("participants")}><Users size={18} /> Participant directory</button>
+      <button className="partner-nav-item" onClick={() => onNavigate("activity")}><MessageCircle size={18} /> Conversations</button>
+      {canManage && <><div className="partner-nav-label">RESOURCES</div><button className="partner-nav-item" onClick={() => onNavigate("manage")}><Building2 size={18} /> Locations & staff</button></>}
+      <button className="partner-nav-item" onClick={() => onNavigate("support")}><BookOpen size={18} /> Program guide</button>
+      <button className="partner-nav-item" onClick={() => onNavigate("support")}><HelpCircle size={18} /> Support</button>
+    </nav>
+    <div className="sidebar-account"><span className="sidebar-avatar">{String(account?.membership?.displayName || "?").slice(0, 1).toUpperCase()}</span><div><b>{account?.membership?.displayName || "Partner staff"}</b><span>{roleLabelText(role)}</span></div></div>
+  </aside>;
+}
+function roleLabelText(role) { return ({ owner: "Partner administrator", admin: "Partner administrator", manager: "Location manager", employee: "Partner staff", staff: "Partner staff" })[role] || "Partner staff"; }
+
 function readBootstrapForm(formElement, fallback) {
   const fields = Array.from(formElement.querySelectorAll("input"));
   return {
@@ -122,6 +145,7 @@ export function StaffPortal() {
   const role = account?.membership?.role;
   const canManageStaff = ["owner", "admin", "manager"].includes(role);
   const canManageLocations = ["owner", "admin"].includes(role);
+  const navigate = (target) => document.getElementById(`lighthouse-${target}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const [participants, setParticipants] = useState([]);
   const [locations, setLocations] = useState([]);
   const [locationName, setLocationName] = useState("");
@@ -307,6 +331,8 @@ export function StaffPortal() {
   const onboardedCount = dashboard?.events?.find((event) => event.eventType === "participant_onboarded")?.count ?? 0;
   return (
     <section className="lighthouse-page partner-page">
+      <PartnerSidebar account={account} onNavigate={navigate} />
+      <div className="partner-workspace">
       <div className="lighthouse-topbar">
         <Brand partner />
           <div className="topbar-right">
@@ -338,7 +364,7 @@ export function StaffPortal() {
           </div>
           <span className="role-pill">{roleLabel(account?.membership?.role)}</span>
         </div>
-        <section className="snapshot-section">
+        <section id="lighthouse-overview" className="snapshot-section">
           <div className="section-title">
             <div>
               <span className="lighthouse-kicker">PROGRAM SNAPSHOT</span>
@@ -355,12 +381,12 @@ export function StaffPortal() {
             {staffView ? <><div><Check size={20} /><b>{onboardedCount}</b><span>People onboarded</span></div><div><ArrowRight size={20} /><b>{inviteCount}</b><span>Invites sent</span></div></> : <><div><Building2 size={20} /><b>{dashboard?.locations?.length || locations.length}</b><span>Locations</span></div><div><Users size={20} /><b>{inviteCount}</b><span>Invites sent</span></div></>}
           </div>
         </section>
-        <section className="invite-hero">
+        <section id="lighthouse-invite" className="invite-hero">
           <div><span className="lighthouse-kicker">NEXT STEP</span><h2>Invite a participant</h2><p>Send a secure, single-use invitation. You only need their email address.</p></div>
           <form className="invite-form" onSubmit={createInvite}><label className="sr-only" htmlFor="participant-email">Participant email</label><input id="participant-email" required type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="participant@example.org" /><button className="lighthouse-primary" type="submit">Create invite <ArrowRight size={16} /></button></form>
         </section>
         {invite && <div className="invite-result" role="status"><div><Check size={18} /><div><b>Invite created</b><span>Copy this code now. It is shown only once and expires in 72 hours.</span></div></div><code>{invite.inviteToken}</code><button className="outline-button" onClick={() => navigator.clipboard?.writeText(invite.inviteToken)}><Clipboard size={15} /> Copy code</button></div>}
-        <section className="directory-section">
+        <section id="lighthouse-participants" className="directory-section">
           <div className="section-title">
             <div>
               <span className="lighthouse-kicker">PARTICIPANT DIRECTORY</span>
@@ -393,7 +419,7 @@ export function StaffPortal() {
             </div>
           )}
         </section>
-        {canManageStaff && <div className="admin-tools">
+        {canManageStaff && <div id="lighthouse-manage" className="admin-tools">
           <details>
             <summary>
               <Plus size={15} /> Manage locations and staff
@@ -492,6 +518,7 @@ export function StaffPortal() {
           </p>
         )}
       </main>
+      </div>
     </section>
   );
 }
