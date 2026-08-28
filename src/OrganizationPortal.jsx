@@ -505,6 +505,11 @@ export function StaffPortal() {
 }
 
 function ParticipantPortal() {
+  const devUsers = [
+    { label: "Participant Demo · Robins House", email: "participant.login@robins-house.test", password: "participant-pass-123" },
+    { label: "Alex Johnson · Robins House", email: "alex.johnson@example.test", password: "alex-pass-123" },
+    { label: "Jordan Lee · Robins House", email: "jordan.lee@example.test", password: "jordan-pass-123" },
+  ];
   const [session, setSession] = useState(
     () => sessionStorage.getItem("lighthouse-participant-session") || "",
   );
@@ -562,8 +567,11 @@ function ParticipantPortal() {
     }
   };
   const developerPath =
-    import.meta.env.DEV &&
     ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  const chooseDevUser = (event) => {
+    const selected = devUsers.find((user) => user.email === event.target.value);
+    if (selected) setLoginForm({ email: selected.email, password: selected.password });
+  };
   const seedDeveloperScenario = async () => {
     try {
       const result = await request("organizationDevelopmentSeed", {});
@@ -647,6 +655,7 @@ function ParticipantPortal() {
             <div className="join-panel participant-login-panel">
               <div className="step-line"><span className="step-number">2</span><b>Already have an account?</b></div>
               <p>Use the same Lighthouse login on this site and in ApplyPilot.</p>
+              {developerPath && <label className="dev-user-picker">Local test user<select defaultValue="" onChange={chooseDevUser}><option value="">Choose a seeded participant…</option>{devUsers.map((user) => <option key={user.email} value={user.email}>{user.label}</option>)}</select></label>}
               <form className="lighthouse-form" onSubmit={login}>
                 <label>Email<input required type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder="you@example.org" autoComplete="email" /></label>
                 <label>Password<input required type="password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder="Your password" autoComplete="current-password" /></label>
