@@ -4,10 +4,8 @@ import {
   Building2,
   Check,
   Clipboard,
-  BookOpen,
   HelpCircle,
   Home,
-  MessageCircle,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -105,12 +103,9 @@ function PartnerSidebar({ account, onNavigate }) {
     <nav className="partner-nav" aria-label="Partner workspace navigation">
       <button className="partner-nav-item active" onClick={() => onNavigate("overview")}><Home size={18} /> Overview</button>
       <div className="partner-nav-label">WORKSPACE</div>
-      <button className="partner-nav-item" onClick={() => onNavigate("invite")}><Users size={18} /> Invite participant</button>
-      <button className="partner-nav-item" onClick={() => onNavigate("participants")}><Users size={18} /> Participant directory</button>
-      <button className="partner-nav-item" onClick={() => onNavigate("activity")}><MessageCircle size={18} /> Conversations</button>
+      <button className="partner-nav-item" onClick={() => onNavigate("participants")}><Users size={18} /> Participants</button>
       {canManage && <><div className="partner-nav-label">RESOURCES</div><button className="partner-nav-item" onClick={() => onNavigate("manage")}><Building2 size={18} /> Locations & staff</button></>}
-      <button className="partner-nav-item" onClick={() => onNavigate("support")}><BookOpen size={18} /> Program guide</button>
-      <button className="partner-nav-item" onClick={() => onNavigate("support")}><HelpCircle size={18} /> Support</button>
+      <button className="partner-nav-item" onClick={() => onNavigate("support")}><HelpCircle size={18} /> Help</button>
     </nav>
     <div className="sidebar-account"><span className="sidebar-avatar">{String(account?.membership?.displayName || "?").slice(0, 1).toUpperCase()}</span><div><b>{account?.membership?.displayName || "Partner staff"}</b><span>{roleLabelText(role)}</span></div></div>
   </aside>;
