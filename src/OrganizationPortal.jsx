@@ -26,6 +26,7 @@ const routes = {
   organizationAddStaffForSession: "staff/add",
   organizationCreateStaffInvite: "staff/invite/create",
   organizationRedeemStaffInvite: "staff/invite/redeem",
+  organizationStaffAccount: "staff/account",
 };
 const apiOrigin =
   import.meta.env.DEV &&
@@ -112,6 +113,7 @@ export function StaffPortal() {
   const [staffInviteToken] = useState(() => new URLSearchParams(window.location.search).get("staffInvite") || "");
   const [staffRedeemForm, setStaffRedeemForm] = useState({ email: "", displayName: "" });
   const [dashboard, setDashboard] = useState(null);
+  const [account, setAccount] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [locations, setLocations] = useState([]);
   const [locationName, setLocationName] = useState("");
@@ -140,11 +142,19 @@ export function StaffPortal() {
   const refresh = async () => {
     try {
       setDashboard(await request("organizationDashboard", session));
+      setAccount(await request("organizationStaffAccount", session));
       setParticipants(await request("organizationListParticipants", session));
       setLocations(await request("organizationListLocations", session));
     } catch (error) {
       setMessage(error.message);
     }
+  };
+  const logout = () => {
+    sessionStorage.removeItem("north-star-staff-session");
+    setSession("");
+    setDashboard(null);
+    setAccount(null);
+    setMessage("You have been logged out.");
   };
   useEffect(() => {
     if (session) refresh();
@@ -315,14 +325,23 @@ export function StaffPortal() {
     <section className="lighthouse-page partner-page">
       <div className="lighthouse-topbar">
         <Brand partner />
-        <div className="topbar-right">
-          <span className="privacy-chip">
-            <ShieldCheck size={15} /> Privacy first
-          </span>
-          <button className="text-button" onClick={refresh}>
-            <RefreshCw size={15} /> Refresh
-          </button>
-        </div>
+          <div className="topbar-right">
+            <span className="privacy-chip">
+              <ShieldCheck size={15} /> Privacy first
+            </span>
+            <button className="text-button" onClick={refresh}>
+              <RefreshCw size={15} /> Refresh
+            </button>
+            <details className="account-menu">
+              <summary><span className="account-avatar">{String(account?.membership?.displayName || "?").slice(0, 1).toUpperCase()}</span><span>Account</span></summary>
+              <div className="account-panel">
+                <strong>{account?.membership?.displayName || "Staff account"}</strong>
+                <span>{account?.membership?.email || ""}</span>
+                <small>{account?.membership?.role || "staff"}</small>
+                <button className="outline-button" type="button" onClick={logout}>Log out</button>
+              </div>
+            </details>
+          </div>
       </div>
       <main className="lighthouse-content">
         <div className="page-heading">

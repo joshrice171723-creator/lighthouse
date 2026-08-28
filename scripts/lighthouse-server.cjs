@@ -17,6 +17,7 @@ const route = async (request, response) => {
       if (action === 'bootstrap') { const organization = platform.createOrganization(body); const membership = platform.addStaff({ organizationId: organization.id, email: body.email, displayName: body.displayName, role: 'owner' }); result = platform.createStaffSession({ membershipId: membership.id }); }
       else if (action === 'dev/seed') { if (process.env.LIGHTHOUSE_DEV_MODE !== '1' || !['127.0.0.1', '::1'].includes(request.socket.remoteAddress)) throw new Error('Developer test path is disabled.'); result = platform.createDevelopmentScenario(); }
       else if (action === 'dashboard') result = platform.dashboard(body);
+      else if (action === 'staff/account') result = platform.staffAccount(body.sessionToken || body);
       else if (action === 'locations') result = platform.listLocations(body.sessionToken || body);
       else if (action === 'location/create') result = platform.createLocation(body.sessionToken, body.input || body);
       else if (action === 'staff/add') result = platform.addStaffForSession(body.sessionToken, body.input || body);

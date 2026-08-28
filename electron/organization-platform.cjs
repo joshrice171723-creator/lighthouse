@@ -168,6 +168,12 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       if (!membership) throw new Error('Staff membership not found.');
       return { token: issueSession('staff', membership.id, membership.organization_id), organization: org(membership.organization_id), membership: { id: membership.id, email: membership.email, displayName: membership.display_name, role: membership.role } };
     },
+    staffAccount(rawSession) {
+      const actor = session(rawSession, 'staff');
+      const membership = db.prepare('SELECT id, email, display_name AS displayName, role, location_id AS locationId, status FROM organization_memberships WHERE id = ? AND status = \'active\'').get(actor.subject_id);
+      if (!membership) throw new Error('Staff account not found.');
+      return { membership, organization: org(actor.organization_id) };
+    },
     createInvite(rawSession, input = {}) {
       const actor = session(rawSession, 'staff'); const membership = db.prepare('SELECT * FROM organization_memberships WHERE id = ? AND status = \'active\'').get(actor.subject_id); const organization = org(actor.organization_id);
       if (!organization) throw new Error('Organization not found.');
