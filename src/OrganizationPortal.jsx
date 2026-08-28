@@ -302,6 +302,9 @@ export function StaffPortal() {
       <section className="lighthouse-page partner-page"><div className="lighthouse-topbar"><Brand partner /></div><main className="lighthouse-content setup-content"><span className="lighthouse-kicker">LIGHTHOUSE OWNER</span><h1>Create a partner organization.</h1><p className="lighthouse-lede">Set up a partner organization and its first administrator. This page is for Lighthouse platform owners only.</p><form className="lighthouse-form" onSubmit={setup}><label>Partner organization name<input required value={setupForm.name} onChange={(event) => setSetupForm({ ...setupForm, name: event.target.value })} placeholder="Harbor House" /></label><label>Partner administrator name<input required value={setupForm.displayName} onChange={(event) => setSetupForm({ ...setupForm, displayName: event.target.value })} placeholder="Administrator name" /></label><label>Administrator work email<input required type="email" value={setupForm.email} onChange={(event) => setSetupForm({ ...setupForm, email: event.target.value })} placeholder="admin@partner.org" /></label><label>Administrator password<input required minLength={8} type="password" autoComplete="new-password" value={setupForm.password} onChange={(event) => setSetupForm({ ...setupForm, password: event.target.value })} placeholder="At least 8 characters" /></label><button className="lighthouse-primary" type="submit">Create partner organization <ArrowRight size={16} /></button></form>{message && <p className="lighthouse-message" role="alert">{message}</p>}<PrivacyNote /></main></section>
     );
   const count = dashboard?.counts?.participants ?? 0;
+  const staffView = ["employee", "staff"].includes(role);
+  const inviteCount = dashboard?.events?.find((event) => event.eventType === "participant_invited")?.count ?? 0;
+  const onboardedCount = dashboard?.events?.find((event) => event.eventType === "participant_onboarded")?.count ?? 0;
   return (
     <section className="lighthouse-page partner-page">
       <div className="lighthouse-topbar">
@@ -335,53 +338,6 @@ export function StaffPortal() {
           </div>
           <span className="role-pill">{roleLabel(account?.membership?.role)}</span>
         </div>
-        <section className="invite-hero">
-          <div>
-            <span className="lighthouse-kicker">NEXT STEP</span>
-            <h2>Invite a participant</h2>
-            <p>
-              Send a secure, single-use invitation. You only need their email
-              address.
-            </p>
-          </div>
-          <form className="invite-form" onSubmit={createInvite}>
-            <label className="sr-only" htmlFor="participant-email">
-              Participant email
-            </label>
-            <input
-              id="participant-email"
-              required
-              type="email"
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
-              placeholder="participant@example.org"
-            />
-            <button className="lighthouse-primary" type="submit">
-              Create invite <ArrowRight size={16} />
-            </button>
-          </form>
-        </section>
-        {invite && (
-          <div className="invite-result" role="status">
-            <div>
-              <Check size={18} />
-              <div>
-                <b>Invite created</b>
-                <span>
-                  Copy this code now. It is shown only once and expires in 72
-                  hours.
-                </span>
-              </div>
-            </div>
-            <code>{invite.inviteToken}</code>
-            <button
-              className="outline-button"
-              onClick={() => navigator.clipboard?.writeText(invite.inviteToken)}
-            >
-              <Clipboard size={15} /> Copy code
-            </button>
-          </div>
-        )}
         <section className="snapshot-section">
           <div className="section-title">
             <div>
@@ -396,18 +352,14 @@ export function StaffPortal() {
               <b>{count}</b>
               <span>Participants</span>
             </div>
-            <div>
-              <Building2 size={20} />
-              <b>{dashboard?.locations?.length || locations.length}</b>
-              <span>Locations</span>
-            </div>
-            <div>
-              <ShieldCheck size={20} />
-              <b>Private</b>
-              <span>Career records</span>
-            </div>
+            {staffView ? <><div><Check size={20} /><b>{onboardedCount}</b><span>People onboarded</span></div><div><ArrowRight size={20} /><b>{inviteCount}</b><span>Invites sent</span></div></> : <><div><Building2 size={20} /><b>{dashboard?.locations?.length || locations.length}</b><span>Locations</span></div><div><Users size={20} /><b>{inviteCount}</b><span>Invites sent</span></div></>}
           </div>
         </section>
+        <section className="invite-hero">
+          <div><span className="lighthouse-kicker">NEXT STEP</span><h2>Invite a participant</h2><p>Send a secure, single-use invitation. You only need their email address.</p></div>
+          <form className="invite-form" onSubmit={createInvite}><label className="sr-only" htmlFor="participant-email">Participant email</label><input id="participant-email" required type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="participant@example.org" /><button className="lighthouse-primary" type="submit">Create invite <ArrowRight size={16} /></button></form>
+        </section>
+        {invite && <div className="invite-result" role="status"><div><Check size={18} /><div><b>Invite created</b><span>Copy this code now. It is shown only once and expires in 72 hours.</span></div></div><code>{invite.inviteToken}</code><button className="outline-button" onClick={() => navigator.clipboard?.writeText(invite.inviteToken)}><Clipboard size={15} /> Copy code</button></div>}
         <section className="directory-section">
           <div className="section-title">
             <div>
