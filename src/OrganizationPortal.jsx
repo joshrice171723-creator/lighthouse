@@ -116,7 +116,10 @@ export function StaffPortal() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [setupForm, setSetupForm] = useState({ name: "", displayName: "", email: "", password: "" });
   const setupMode = new URLSearchParams(window.location.search).get("setup") === "1";
-  const roleLabel = (role) => ({ owner: "Partner owner", admin: "Partner administrator", manager: "Location manager", employee: "Partner staff", staff: "Partner staff" })[role] || "Partner staff";
+  const roleLabel = (role) => ({ owner: "Partner administrator", admin: "Partner administrator", manager: "Location manager", employee: "Partner staff", staff: "Partner staff" })[role] || "Partner staff";
+  const role = account?.membership?.role;
+  const canManageStaff = ["owner", "admin", "manager"].includes(role);
+  const canManageLocations = ["owner", "admin"].includes(role);
   const [dashboard, setDashboard] = useState(null);
   const [account, setAccount] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -438,13 +441,13 @@ export function StaffPortal() {
             </div>
           )}
         </section>
-        <div className="admin-tools">
+        {canManageStaff && <div className="admin-tools">
           <details>
             <summary>
               <Plus size={15} /> Manage locations and staff
             </summary>
             <div className="admin-tools-grid">
-              <form className="compact-form" onSubmit={createLocation}>
+              {canManageLocations && <form className="compact-form" onSubmit={createLocation}>
                 <h3>Locations</h3>
                 <label>
                   New location
@@ -462,7 +465,7 @@ export function StaffPortal() {
                   {locations.map((location) => location.name).join(" · ") ||
                     "No locations added yet."}
                 </small>
-              </form>
+              </form>}
               <form className="compact-form" onSubmit={inviteStaff}>
                 <h3>Invite staff</h3>
                 <label>
@@ -530,7 +533,7 @@ export function StaffPortal() {
               </form>
             </div>
           </details>
-        </div>
+        </div>}
         {message && (
           <p className="lighthouse-message" role="status">
             {message}
