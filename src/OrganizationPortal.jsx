@@ -5,9 +5,11 @@ import {
   Building2,
   Check,
   Clipboard,
+  FileText,
   HelpCircle,
   Home,
   MessageCircle,
+  Search,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -515,6 +517,23 @@ export function StaffPortal() {
   );
 }
 
+function DocumentsView({ tab, setTab, search, setSearch }) {
+  const cards = [
+    { title: "New Resume", text: "Craft and tailor to job description", icon: FileText },
+    { title: "New Cover Letter", text: "Create and customize with AI", icon: FileText },
+    { title: "New Template", text: "Create a reusable cover letter template", icon: Clipboard },
+    { title: "Question Response", text: "Generate tailored responses to application questions", icon: MessageCircle },
+  ];
+  const rows = tab === "Resumes" ? [{ name: "Josh_Rice_resume", status: "Uploaded", type: "PDF", detail: "Default", created: "Aug 25, 2026, 8:34 PM", edited: "Aug 25, 2026, 8:34 PM" }] : [];
+  const filtered = rows.filter((row) => row.name.toLowerCase().includes(search.toLowerCase()));
+  return <div className="documents-view">
+    <div className="document-actions-grid">{cards.map(({ title, text, icon: Icon }) => <button className="document-action-card" key={title} type="button"><span className="document-action-icon"><Icon size={22} /></span><span><b>{title}</b><small>{text}</small></span><Plus size={20} /></button>)}</div>
+    <div className="document-tabs" role="tablist">{["Resumes", "Cover Letters", "Templates"].map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}><FileText size={15} /> {item}</button>)}</div>
+    <div className="document-toolbar"><span>0 selected <button type="button" className="document-delete" disabled>Delete</button></span><div><button type="button" className="document-upload"><ArrowRight size={15} /> Upload</button><select aria-label="Document filter"><option>All</option></select><label className="document-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></label></div></div>
+    <div className="document-table"><div className="document-table-head"><span></span><b>{tab.slice(0, -1).toUpperCase()} NAME</b><b>CREATED</b><b>LAST EDITED</b><b>ACTIONS</b></div>{filtered.length ? filtered.map((row) => <div className="document-row" key={row.name}><input type="checkbox" aria-label={`Select ${row.name}`} /><span className="document-file-icon"><FileText size={18} /></span><div><b>{row.name}</b><small><em>{row.status}</em><em>{row.type}</em><em>{row.detail}</em></small></div><span>{row.created}</span><span>{row.edited}</span><button type="button" className="document-more">Edit&nbsp;&nbsp; More⌄</button></div>) : <div className="document-empty">No {tab.toLowerCase()} yet.</div>}</div>
+  </div>;
+}
+
 function ParticipantPortal() {
   const devUsers = [
     { label: "Participant Demo · Robins House", email: "participant.login@robins-house.test", password: "participant-pass-123" },
@@ -539,6 +558,8 @@ function ParticipantPortal() {
   const [link, setLink] = useState(null);
   const [message, setMessage] = useState("");
   const [activeView, setActiveView] = useState("home");
+  const [documentTab, setDocumentTab] = useState("Resumes");
+  const [documentSearch, setDocumentSearch] = useState("");
   useEffect(() => {
     if (session)
       request("organizationParticipantMe", session)
@@ -728,6 +749,7 @@ function ParticipantPortal() {
     interviews: { label: "Interview prep", title: "Interview prep", lede: "Prepare for conversations with practical guidance and notes." },
     messages: { label: "Messages", title: "Messages", lede: "Stay connected with the staff supporting your goals." },
     profile: { label: "Profile", title: "Your profile", lede: "Review the information used to support your applications." },
+    documents: { label: "Documents", title: "My Documents", lede: "Manage and tailor all of your job application documents here." },
   };
   const view = views[activeView];
   return (
@@ -741,6 +763,7 @@ function ParticipantPortal() {
             <button className={activeView === "applications" ? "active" : ""} onClick={() => setActiveView("applications")}><Clipboard size={17} /> Applications</button>
             <button className={activeView === "interviews" ? "active" : ""} onClick={() => setActiveView("interviews")}><Check size={17} /> Interview prep</button>
             <button className={activeView === "messages" ? "active" : ""} onClick={() => setActiveView("messages")}><MessageCircle size={17} /> Messages</button>
+            <button className={activeView === "documents" ? "active" : ""} onClick={() => setActiveView("documents")}><FileText size={17} /> Documents</button>
           </nav>
           <div className="participant-nav-bottom">
             <button className={activeView === "profile" ? "active" : ""} onClick={() => setActiveView("profile")}><UserRound size={17} /> Profile</button>
@@ -754,7 +777,7 @@ function ParticipantPortal() {
           </div>
           <main className="lighthouse-content participant-content">
             <div className="participant-intro"><span className="lighthouse-kicker">{view.label.toUpperCase()}</span><h1>{view.title}</h1><p className="lighthouse-lede">{view.lede}</p></div>
-            {activeView === "home" ? <>
+            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} /> : activeView === "home" ? <>
               <div className="participant-stat-grid"><div><BriefcaseBusiness size={20} /><b>0</b><span>Saved opportunities</span></div><div><Clipboard size={20} /><b>0</b><span>Applications in progress</span></div><div><Check size={20} /><b>0</b><span>Interviews coming up</span></div></div>
               <div className="participant-card-grid"><section className="participant-card"><span className="lighthouse-kicker">NEXT STEP</span><h2>Save an opportunity to get started</h2><p>When a job is shared with you, save it here so you can open it later and work through the application at your pace.</p><button className="outline-button" onClick={() => setActiveView("saved")}>View saved opportunities <ArrowRight size={15} /></button></section><section className="participant-card"><span className="lighthouse-kicker">YOUR SUPPORT</span><h2>Need help with an application?</h2><p>Your staff can help you review an opportunity, prepare answers, and keep track of what is left to do.</p><button className="outline-button" onClick={() => setActiveView("messages")}>Open messages <ArrowRight size={15} /></button></section></div>
             </> : <section className="participant-empty"><div className="connected-icon">{activeView === "messages" ? <MessageCircle size={20} /> : <BriefcaseBusiness size={20} />}</div><h2>{activeView === "profile" ? profile.participant.displayName : `Nothing here yet`}</h2><p>{activeView === "saved" ? "Saved opportunities shared with you will appear here." : activeView === "applications" ? "Applications you begin will appear here with their next step." : activeView === "interviews" ? "Upcoming interviews and preparation notes will appear here." : activeView === "messages" ? "Messages from your support team will appear here." : `Connected to ${profile.organization.name}.`}</p></section>}
