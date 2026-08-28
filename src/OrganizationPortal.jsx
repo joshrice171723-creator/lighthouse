@@ -116,6 +116,7 @@ export function StaffPortal() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [setupForm, setSetupForm] = useState({ name: "", displayName: "", email: "", password: "" });
   const setupMode = new URLSearchParams(window.location.search).get("setup") === "1";
+  const roleLabel = (role) => ({ owner: "Partner owner", admin: "Partner administrator", manager: "Location manager", employee: "Partner staff", staff: "Partner staff" })[role] || "Partner staff";
   const [dashboard, setDashboard] = useState(null);
   const [account, setAccount] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -329,7 +330,7 @@ export function StaffPortal() {
               A clear view of your program and the people you support.
             </p>
           </div>
-          <span className="role-pill">Partner administrator</span>
+          <span className="role-pill">{roleLabel(account?.membership?.role)}</span>
         </div>
         <section className="invite-hero">
           <div>
