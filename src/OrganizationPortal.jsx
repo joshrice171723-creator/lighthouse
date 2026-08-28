@@ -24,6 +24,8 @@ const routes = {
   organizationCreateLocation: "location/create",
   organizationListLocations: "locations",
   organizationAddStaffForSession: "staff/add",
+  organizationCreateStaffInvite: "staff/invite/create",
+  organizationRedeemStaffInvite: "staff/invite/redeem",
 };
 const apiOrigin =
   import.meta.env.DEV &&
@@ -106,6 +108,9 @@ export function StaffPortal() {
   const [form, setForm] = useState({ name: "", email: "", displayName: "" });
   const [inviteEmail, setInviteEmail] = useState("");
   const [invite, setInvite] = useState(null);
+  const [staffInvite, setStaffInvite] = useState(null);
+  const [staffInviteToken] = useState(() => new URLSearchParams(window.location.search).get("staffInvite") || "");
+  const [staffRedeemForm, setStaffRedeemForm] = useState({ email: "", displayName: "" });
   const [dashboard, setDashboard] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -195,21 +200,51 @@ export function StaffPortal() {
       setMessage(error.message);
     }
   };
-  const addStaff = async (event) => {
+  const inviteStaff = async (event) => {
     event.preventDefault();
     try {
-      await request("organizationAddStaffForSession", [session, staffForm]);
+      setStaffInvite(await request("organizationCreateStaffInvite", [session, staffForm]));
       setStaffForm({
         email: "",
         displayName: "",
         role: "employee",
         locationId: staffForm.locationId,
       });
-      setMessage("Staff account created.");
+      setMessage("Staff invitation ready to share.");
     } catch (error) {
       setMessage(error.message);
     }
   };
+  const redeemStaffInvite = async (event) => {
+    event.preventDefault();
+    try {
+      const result = await request("organizationRedeemStaffInvite", { inviteToken: staffInviteToken, ...staffRedeemForm });
+      sessionStorage.setItem("north-star-staff-session", result.token);
+      window.history.replaceState({}, "", window.location.pathname);
+      setSession(result.token);
+      setMessage("Your staff account is ready.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  if (!session && staffInviteToken)
+    return (
+      <section className="lighthouse-page partner-page">
+        <div className="lighthouse-topbar"><Brand partner /><a href="#help"><HelpCircle size={16} /> Help</a></div>
+        <main className="lighthouse-content setup-content">
+          <span className="lighthouse-kicker">STAFF INVITATION</span>
+          <h1>Join your partner workspace.</h1>
+          <p className="lighthouse-lede">Confirm the email address that received this invitation and choose the name your team will see.</p>
+          <form className="lighthouse-form" onSubmit={redeemStaffInvite}>
+            <label>Work email<input required type="email" autoComplete="email" value={staffRedeemForm.email} onChange={(event) => setStaffRedeemForm({ ...staffRedeemForm, email: event.target.value })} placeholder="you@organization.org" /></label>
+            <label>Your name<input required autoComplete="name" value={staffRedeemForm.displayName} onChange={(event) => setStaffRedeemForm({ ...staffRedeemForm, displayName: event.target.value })} placeholder="Your name" /></label>
+            <button className="lighthouse-primary" type="submit">Accept invitation <ArrowRight size={16} /></button>
+          </form>
+          {message && <p className="lighthouse-message" role="alert">{message}</p>}
+          <PrivacyNote />
+        </main>
+      </section>
+    );
   if (!session)
     return (
       <section className="lighthouse-page partner-page">
@@ -431,8 +466,8 @@ export function StaffPortal() {
                     "No locations added yet."}
                 </small>
               </form>
-              <form className="compact-form" onSubmit={addStaff}>
-                <h3>Staff accounts</h3>
+              <form className="compact-form" onSubmit={inviteStaff}>
+                <h3>Invite staff</h3>
                 <label>
                   Name
                   <input
@@ -492,8 +527,9 @@ export function StaffPortal() {
                   </select>
                 </label>
                 <button className="outline-button" type="submit">
-                  Create staff account
+                  Create staff invitation
                 </button>
+                {staffInvite && <div className="invite-result compact-invite" role="status"><div><Check size={18} /><div><b>Invitation ready</b><span>Share this link. It expires in 72 hours and works once.</span></div></div><code>{`${window.location.origin}${window.location.pathname}?staffInvite=${staffInvite.inviteToken}`}</code><button type="button" className="outline-button" onClick={() => navigator.clipboard?.writeText(`${window.location.origin}${window.location.pathname}?staffInvite=${staffInvite.inviteToken}`)}><Clipboard size={15} /> Copy link</button></div>}
               </form>
             </div>
           </details>

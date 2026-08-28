@@ -147,6 +147,22 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       const role = ['manager', 'employee'].includes(input.role) ? input.role : 'employee';
       return this.addStaff({ ...input, organizationId: actor.organization_id, locationId, role });
     },
+    createStaffInvite(rawSession, input = {}) {
+      const actor = session(rawSession, 'staff');
+      const membership = db.prepare('SELECT * FROM organization_memberships WHERE id = ? AND status = \'active\'').get(actor.subject_id);
+      if (!membership || !['owner', 'admin', 'manager'].includes(membership.role)) throw new Error('This account cannot invite staff.');
+      const inviteEmail = email(input.email);
+      const displayName = bounded(input.displayName, 200);
+      if (!inviteEmail.includes('@') || !displayName) throw new Error('Valid staff email and name are required.');
+      const role = ['manager', 'employee'].includes(input.role) ? input.role : 'employee';
+      const locationId = bounded(input.locationId, 160) || membership.location_id || db.prepare('SELECT id FROM organization_locations WHERE organization_id = ? AND is_primary = 1').get(actor.organization_id)?.id;
+      if (!locationId || !db.prepare('SELECT id FROM organization_locations WHERE id = ? AND organization_id = ? AND status = \'active\'').get(locationId, actor.organization_id)) throw new Error('Staff location not found.');
+      if (membership.location_id && membership.location_id !== locationId) throw new Error('You can only invite staff at your location.');
+      const raw = token(18); const record = { id: id('invite'), organization_id: actor.organization_id, email: inviteEmail, role, location_id: locationId, sponsor_membership_id: actor.subject_id, token_hash: hash(raw), expires_at: input.expiresAt || expiry(72), created_at: stamp() };
+      db.prepare('INSERT INTO organization_invites (id, organization_id, email, role, location_id, sponsor_membership_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(...Object.values(record));
+      recordEvent({ organizationId: actor.organization_id, actorType: 'staff', actorId: actor.subject_id, eventType: 'staff_invited', subjectType: 'invite', subjectId: record.id, metadata: { role, locationId } });
+      return { id: record.id, organizationId: record.organization_id, email: record.email, displayName, role, expiresAt: record.expires_at, inviteToken: raw };
+    },
     createStaffSession(input = {}) {
       const membership = db.prepare('SELECT * FROM organization_memberships WHERE id = ? AND status = \'active\'').get(bounded(input.membershipId, 160));
       if (!membership) throw new Error('Staff membership not found.');
@@ -172,6 +188,17 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       const tx = db.transaction(() => { db.prepare('INSERT INTO participant_profiles (id, organization_id, email, display_name, location_id, sponsor_membership_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, email) DO UPDATE SET display_name=excluded.display_name, location_id=excluded.location_id, sponsor_membership_id=excluded.sponsor_membership_id, status=\'active\', updated_at=excluded.updated_at').run(participantId, invite.organization_id, participantEmail, displayName, invite.location_id, invite.sponsor_membership_id, stamp(), stamp()); db.prepare('UPDATE organization_invites SET redeemed_at = ? WHERE id = ?').run(stamp(), invite.id); recordEvent({ organizationId: invite.organization_id, actorType: 'participant', actorId: participantId, eventType: 'participant_onboarded', subjectType: 'participant', subjectId: participantId, metadata: { locationId: invite.location_id } }); }); tx();
       const participant = db.prepare('SELECT id, organization_id AS organizationId, email, display_name AS displayName, status FROM participant_profiles WHERE organization_id = ? AND email = ?').get(invite.organization_id, participantEmail);
       return { token: issueSession('participant', participant.id, participant.organizationId, 12), participant, organization: org(invite.organization_id) };
+    },
+    redeemStaffInvite(input = {}) {
+      const invite = db.prepare("SELECT * FROM organization_invites WHERE token_hash = ? AND role IN ('manager', 'employee') AND redeemed_at IS NULL AND expires_at > datetime('now')").get(hash(input.inviteToken || ''));
+      if (!invite) throw new Error('Staff invite is invalid, expired, or already used.');
+      const staffEmail = email(input.email); const displayName = bounded(input.displayName);
+      if (staffEmail !== invite.email) throw new Error('Invite email does not match.');
+      if (!displayName) throw new Error('Your name is required.');
+      const membership = this.addStaff({ organizationId: invite.organization_id, email: staffEmail, displayName, role: invite.role, locationId: invite.location_id });
+      db.prepare('UPDATE organization_invites SET redeemed_at = ? WHERE id = ?').run(stamp(), invite.id);
+      recordEvent({ organizationId: invite.organization_id, actorType: 'staff', actorId: membership.id, eventType: 'staff_onboarded', subjectType: 'membership', subjectId: membership.id, metadata: { role: invite.role, locationId: invite.location_id } });
+      return this.createStaffSession({ membershipId: membership.id });
     },
     participantFromSession(rawSession) { const actor = session(rawSession, 'participant'); const participant = db.prepare('SELECT id, organization_id AS organizationId, email, display_name AS displayName, status FROM participant_profiles WHERE id = ? AND organization_id = ?').get(actor.subject_id, actor.organization_id); if (!participant) throw new Error('Participant not found.'); return { participant, organization: org(actor.organization_id) }; },
     createExtensionLink(rawSession) { const actor = session(rawSession, 'participant'); const raw = token(12); const record = { id: id('link'), participant_id: actor.subject_id, organization_id: actor.organization_id, code_hash: hash(raw), expires_at: expiry(1), created_at: stamp() }; db.prepare('INSERT INTO extension_link_codes (id, participant_id, organization_id, code_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(...Object.values(record)); recordEvent({ organizationId: actor.organization_id, actorType: 'participant', actorId: actor.subject_id, eventType: 'extension_link_issued', subjectType: 'extension_link', subjectId: record.id }); return { code: raw, expiresAt: record.expires_at }; },

@@ -20,6 +20,8 @@ const route = async (request, response) => {
       else if (action === 'locations') result = platform.listLocations(body.sessionToken || body);
       else if (action === 'location/create') result = platform.createLocation(body.sessionToken, body.input || body);
       else if (action === 'staff/add') result = platform.addStaffForSession(body.sessionToken, body.input || body);
+      else if (action === 'staff/invite/create') result = platform.createStaffInvite(body.sessionToken, body.input || body);
+      else if (action === 'staff/invite/redeem') result = platform.redeemStaffInvite(body);
       else if (action === 'participants') result = platform.listParticipants(body);
       else if (action === 'invite/create') result = platform.createInvite(body.sessionToken, body.input || body);
       else if (action === 'invite/redeem') result = platform.redeemInvite(body);
