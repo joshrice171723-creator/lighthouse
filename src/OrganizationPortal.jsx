@@ -240,7 +240,8 @@ export function StaffPortal() {
   const inviteStaff = async (event) => {
     event.preventDefault();
     try {
-      setStaffInvite(await request("organizationCreateStaffInvite", [session, staffForm]));
+      const scopedStaffForm = role === "manager" ? { ...staffForm, locationId: account?.membership?.locationId } : staffForm;
+      setStaffInvite(await request("organizationCreateStaffInvite", [session, scopedStaffForm]));
       setStaffForm({
         email: "",
         displayName: "",
@@ -479,26 +480,7 @@ export function StaffPortal() {
                     <option value="manager">Location manager</option>
                   </select>
                 </label>
-                <label>
-                  Location
-                  <select
-                    required
-                    value={staffForm.locationId}
-                    onChange={(event) =>
-                      setStaffForm({
-                        ...staffForm,
-                        locationId: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Select location</option>
-                    {locations.map((location) => (
-                      <option key={location.id} value={location.id}>
-                        {location.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {role === "manager" ? <label>Location<input readOnly value={locations.find((location) => location.id === account?.membership?.locationId)?.name || "Assigned location"} /></label> : <label>Location<select required value={staffForm.locationId} onChange={(event) => setStaffForm({ ...staffForm, locationId: event.target.value })}><option value="">Select location</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label>}
                 <button className="outline-button" type="submit">
                   Create staff invitation
                 </button>
