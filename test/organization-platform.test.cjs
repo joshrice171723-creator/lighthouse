@@ -55,7 +55,7 @@ test('platform owner accounts are stored separately from partner memberships', (
   }
 });
 
-test('participants can retrieve only their own uploaded resume bytes', () => {
+test('participants can retrieve only their own uploaded documents', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lighthouse-'));
   const platform = createOrganizationPlatform({ databasePath: path.join(dir, 'platform.sqlite') });
   try {
@@ -70,6 +70,9 @@ test('participants can retrieve only their own uploaded resume bytes', () => {
     assert.equal(fetched.fileName, 'resume.pdf');
     assert.equal(Buffer.from(fetched.dataBase64, 'base64').toString(), 'resume bytes');
     assert.throws(() => platform.getParticipantDocument(ownerSession.token, uploaded.id), /session is invalid or expired/);
+    const coverLetter = platform.uploadParticipantDocument(participantSession.token, { fileName: 'letter.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', documentType: 'cover_letter', dataBase64: Buffer.from('cover letter').toString('base64') });
+    assert.deepEqual(platform.listParticipantDocuments(participantSession.token).map((document) => document.documentType).sort(), ['cover_letter', 'resume']);
+    assert.equal(Buffer.from(platform.getParticipantDocument(participantSession.token, coverLetter.id).dataBase64, 'base64').toString(), 'cover letter');
   } finally {
     platform.close();
     fs.rmSync(dir, { recursive: true, force: true });
