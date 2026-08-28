@@ -522,7 +522,15 @@ function ParticipantPortal() {
     { label: "Jordan Lee · Robins House", email: "jordan.lee@example.test", password: "jordan-pass-123" },
   ];
   const [session, setSession] = useState(
-    () => sessionStorage.getItem("lighthouse-participant-session") || "",
+    () => {
+      const querySession = new URLSearchParams(window.location.search).get("session");
+      if (querySession) {
+        sessionStorage.setItem("lighthouse-participant-session", querySession);
+        window.history.replaceState({}, "", window.location.pathname);
+        return querySession;
+      }
+      return sessionStorage.getItem("lighthouse-participant-session") || "";
+    },
   );
   const [inviteToken, setInviteToken] = useState("");
   const [displayName, setDisplayName] = useState("");
