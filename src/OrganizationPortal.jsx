@@ -126,6 +126,11 @@ function readBootstrapForm(formElement, fallback) {
 }
 
 export function StaffPortal() {
+  const devUsers = [
+    { label: "Partner administrator · Robins House", email: "demo-admin@robins-house.test", password: "demo-pass-123" },
+    { label: "Location manager · Robins House", email: "manager@robins-house.test", password: "manager-pass-123" },
+    { label: "Partner staff · Robins House", email: "staff@robins-house.test", password: "staff-pass-123" },
+  ];
   const [session, setSession] = useState(
     () => sessionStorage.getItem("north-star-staff-session") || "",
   );
@@ -142,6 +147,11 @@ export function StaffPortal() {
   const setupMode = new URLSearchParams(window.location.search).get("setup") === "1";
   const roleLabel = (role) => ({ owner: "Partner administrator", admin: "Partner administrator", manager: "Location manager", employee: "Partner staff", staff: "Partner staff" })[role] || "Partner staff";
   const role = account?.membership?.role;
+  const developerPath = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  const chooseDevUser = (event) => {
+    const selected = devUsers.find((user) => user.email === event.target.value);
+    if (selected) setLoginForm({ email: selected.email, password: selected.password });
+  };
   const canManageStaff = ["owner", "admin", "manager"].includes(role);
   const canManageLocations = ["owner", "admin"].includes(role);
   const navigate = (target) => document.getElementById(`lighthouse-${target}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -311,6 +321,7 @@ export function StaffPortal() {
           <span className="lighthouse-kicker">PARTNER LOGIN</span>
           <h1>Welcome back.</h1>
           <p className="lighthouse-lede">Sign in to open your partner workspace.</p>
+          {developerPath && <label className="dev-user-picker">Local test user<select defaultValue="" onChange={chooseDevUser}><option value="">Choose a seeded partner user…</option>{devUsers.map((user) => <option key={user.email} value={user.email}>{user.label}</option>)}</select></label>}
           <form className="lighthouse-form" onSubmit={login}>
             <label>Work email<input required type="email" autoComplete="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder="you@organization.org" /></label>
             <label>Password<input required type="password" autoComplete="current-password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder="Your password" /></label>
