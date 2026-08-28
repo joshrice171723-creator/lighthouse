@@ -14,6 +14,11 @@ const email = (value) => bounded(value, 320).toLowerCase();
 const expiry = (hours) => new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 
 const schema = `
+CREATE TABLE IF NOT EXISTS platform_accounts (
+  id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL,
+  password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS organizations (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
@@ -101,6 +106,13 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
   };
   return {
     close: () => db.close(),
+    createPlatformAccount(input = {}) {
+      const accountEmail = email(input.email); const displayName = bounded(input.displayName || accountEmail); const password = bounded(input.password, 200);
+      if (!accountEmail.includes('@') || !displayName || password.length < 8) throw new Error('Valid platform owner email, name, and password are required.');
+      const account = { id: id('platform'), email: accountEmail, display_name: displayName, password_hash: passwordHash(password), created_at: stamp(), updated_at: stamp() };
+      db.prepare('INSERT INTO platform_accounts (id, email, display_name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO UPDATE SET display_name=excluded.display_name, password_hash=excluded.password_hash, status=\'active\', updated_at=excluded.updated_at').run(...Object.values(account));
+      return db.prepare('SELECT id, email, display_name AS displayName, status FROM platform_accounts WHERE email = ?').get(accountEmail);
+    },
     createOrganization(input = {}) {
       const name = bounded(input.name); if (!name) throw new Error('Organization name is required.');
       const slug = bounded(input.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), 80);

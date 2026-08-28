@@ -38,3 +38,19 @@ test('partner setup stores the partner organization name independently of Lighth
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('platform owner accounts are stored separately from partner memberships', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lighthouse-'));
+  const platform = createOrganizationPlatform({ databasePath: path.join(dir, 'platform.sqlite') });
+  try {
+    const account = platform.createPlatformAccount({ email: 'builder@northstar.local', displayName: 'Builder', password: 'owner-pass-123' });
+    const organization = platform.createOrganization({ name: 'Harbor House' });
+    const membership = platform.addStaff({ organizationId: organization.id, email: 'admin@harbor.org', displayName: 'Partner Admin', password: 'admin-pass-123', role: 'admin' });
+    assert.equal(account.email, 'builder@northstar.local');
+    assert.equal(membership.role, 'admin');
+    assert.notEqual(account.email, membership.email);
+  } finally {
+    platform.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
