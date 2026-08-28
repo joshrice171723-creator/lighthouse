@@ -115,13 +115,13 @@ export function StaffPortal() {
   const [staffRedeemForm, setStaffRedeemForm] = useState({ email: "", displayName: "" });
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [setupForm, setSetupForm] = useState({ name: "", displayName: "", email: "", password: "" });
+  const [dashboard, setDashboard] = useState(null);
+  const [account, setAccount] = useState(null);
   const setupMode = new URLSearchParams(window.location.search).get("setup") === "1";
   const roleLabel = (role) => ({ owner: "Partner administrator", admin: "Partner administrator", manager: "Location manager", employee: "Partner staff", staff: "Partner staff" })[role] || "Partner staff";
   const role = account?.membership?.role;
   const canManageStaff = ["owner", "admin", "manager"].includes(role);
   const canManageLocations = ["owner", "admin"].includes(role);
-  const [dashboard, setDashboard] = useState(null);
-  const [account, setAccount] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [locations, setLocations] = useState([]);
   const [locationName, setLocationName] = useState("");
