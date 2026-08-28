@@ -683,10 +683,8 @@ function ParticipantPortal() {
   };
   const uploadDocument = async (event, documentType = "resume") => {
     const file = event.target.files?.[0]; if (!file) return;
-    // Keep an obviously named cover letter out of Resumes even when the user starts from the default tab.
-    const resolvedDocumentType = documentType === "resume" && /cover[\s_-]*letter/i.test(file.name) ? "cover_letter" : documentType;
     const dataBase64 = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1] || ''); reader.onerror = reject; reader.readAsDataURL(file); });
-    try { await request("organizationUploadDocument", [session, { fileName: file.name, mimeType: file.type, documentType: resolvedDocumentType, dataBase64 }]); setDocuments(await request("organizationParticipantDocuments", session)); setMessage(`${resolvedDocumentType === "cover_letter" ? "Cover letter" : "Resume"} uploaded. Only you can see the document.`); } catch (error) { setMessage(error.message); } finally { event.target.value = ""; }
+    try { await request("organizationUploadDocument", [session, { fileName: file.name, mimeType: file.type, documentType, dataBase64 }]); setDocuments(await request("organizationParticipantDocuments", session)); setMessage(`${documentType === "cover_letter" ? "Cover letter" : "Resume"} uploaded. Only you can see the document.`); } catch (error) { setMessage(error.message); } finally { event.target.value = ""; }
   };
   const developerPath =
     ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);

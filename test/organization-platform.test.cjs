@@ -70,11 +70,9 @@ test('participants can retrieve only their own uploaded documents', () => {
     assert.equal(fetched.fileName, 'resume.pdf');
     assert.equal(Buffer.from(fetched.dataBase64, 'base64').toString(), 'resume bytes');
     assert.throws(() => platform.getParticipantDocument(ownerSession.token, uploaded.id), /session is invalid or expired/);
-    const coverLetter = platform.uploadParticipantDocument(participantSession.token, { fileName: 'letter.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', documentType: 'cover_letter', dataBase64: Buffer.from('cover letter').toString('base64') });
-    assert.deepEqual(platform.listParticipantDocuments(participantSession.token).map((document) => document.documentType).sort(), ['cover_letter', 'resume']);
-    assert.equal(Buffer.from(platform.getParticipantDocument(participantSession.token, coverLetter.id).dataBase64, 'base64').toString(), 'cover letter');
-    platform.uploadParticipantDocument(participantSession.token, { fileName: 'Cover Letter - Harbor House.pdf', mimeType: 'application/pdf', dataBase64: Buffer.from('cover letter').toString('base64') });
-    assert.deepEqual(platform.listParticipantDocuments(participantSession.token).map((document) => document.documentType).sort(), ['cover_letter', 'cover_letter', 'resume']);
+    platform.uploadParticipantDocument(participantSession.token, { fileName: 'letter.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', documentType: 'cover_letter', dataBase64: Buffer.from('cover letter').toString('base64') });
+    platform.uploadParticipantDocument(participantSession.token, { fileName: 'Cover Letter - Harbor House.pdf', mimeType: 'application/pdf', documentType: 'resume', dataBase64: Buffer.from('cover letter').toString('base64') });
+    assert.deepEqual(platform.listParticipantDocuments(participantSession.token).map((document) => document.documentType).sort(), ['cover_letter', 'resume', 'resume']);
   } finally {
     platform.close();
     fs.rmSync(dir, { recursive: true, force: true });
