@@ -32,6 +32,7 @@ const routes = {
   organizationRedeemStaffInvite: "staff/invite/redeem",
   organizationStaffAccount: "staff/account",
   organizationLogin: "login",
+  organizationParticipantLogin: "participant/login",
 };
 const apiOrigin =
   import.meta.env.DEV &&
@@ -509,6 +510,7 @@ function ParticipantPortal() {
   );
   const [inviteToken, setInviteToken] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [profile, setProfile] = useState(null);
   const [link, setLink] = useState(null);
   const [message, setMessage] = useState("");
@@ -528,6 +530,7 @@ function ParticipantPortal() {
       const result = await request("organizationRedeemInvite", {
         inviteToken,
         displayName,
+        password: loginForm.password,
       });
       sessionStorage.setItem("lighthouse-participant-session", result.token);
       setSession(result.token);
@@ -539,6 +542,16 @@ function ParticipantPortal() {
     } catch (error) {
       setMessage(error.message);
     }
+  };
+  const login = async (event) => {
+    event.preventDefault();
+    try {
+      const result = await request("organizationParticipantLogin", loginForm);
+      sessionStorage.setItem("lighthouse-participant-session", result.token);
+      setSession(result.token);
+      setProfile({ participant: result.participant, organization: result.organization });
+      setMessage("Signed in.");
+    } catch (error) { setMessage(error.message); }
   };
   const issueLink = async () => {
     try {
@@ -600,7 +613,7 @@ function ParticipantPortal() {
                 <span className="step-rule" />
                 <span className="step-muted">2 You’re in</span>
               </div>
-              <p>Enter the invite code your organization gave you.</p>
+              <p>Use the invite code your organization gave you to create your Lighthouse login.</p>
               <form className="lighthouse-form" onSubmit={redeem}>
                 <label>
                   Invite code
@@ -622,9 +635,22 @@ function ParticipantPortal() {
                     autoComplete="name"
                   />
                 </label>
+                <label>
+                  Create a password
+                  <input required minLength={8} type="password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder="At least 8 characters" autoComplete="new-password" />
+                </label>
                 <button className="lighthouse-primary" type="submit">
                   Join workspace <ArrowRight size={16} />
                 </button>
+              </form>
+            </div>
+            <div className="join-panel participant-login-panel">
+              <div className="step-line"><span className="step-number">2</span><b>Already have an account?</b></div>
+              <p>Use the same Lighthouse login on this site and in ApplyPilot.</p>
+              <form className="lighthouse-form" onSubmit={login}>
+                <label>Email<input required type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder="you@example.org" autoComplete="email" /></label>
+                <label>Password<input required type="password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder="Your password" autoComplete="current-password" /></label>
+                <button className="lighthouse-primary" type="submit">Log in <ArrowRight size={16} /></button>
               </form>
             </div>
             <PrivacyNote />

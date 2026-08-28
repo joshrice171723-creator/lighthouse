@@ -19,6 +19,7 @@ const route = async (request, response) => {
       if (action === 'bootstrap') { if (!setupAuthorized) throw new Error('Owner setup is protected.'); try { const organization = platform.createOrganization(body); platform.createPlatformAccount(body); const membership = platform.addStaff({ organizationId: organization.id, email: body.email, displayName: body.displayName, password: body.password, role: 'admin' }); result = platform.createStaffSession({ membershipId: membership.id }); } catch (error) { if (!String(error.message || '').includes('UNIQUE constraint failed: organizations.slug')) throw error; platform.createPlatformAccount(body); result = platform.setStaffPassword(body); } }
       else if (action === 'owner/password') { if (!setupAuthorized) throw new Error('Owner setup is protected.'); result = platform.setStaffPassword(body); }
       else if (action === 'login') result = platform.loginStaff(body);
+      else if (action === 'participant/login') result = platform.loginParticipant(body);
       else if (action === 'dev/seed') { if (process.env.LIGHTHOUSE_DEV_MODE !== '1' || !['127.0.0.1', '::1'].includes(request.socket.remoteAddress)) throw new Error('Developer test path is disabled.'); result = platform.createDevelopmentScenario(); }
       else if (action === 'dashboard') result = platform.dashboard(body);
       else if (action === 'staff/account') result = platform.staffAccount(body.sessionToken || body);

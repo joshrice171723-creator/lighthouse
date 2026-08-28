@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS organization_memberships (
 );
 CREATE TABLE IF NOT EXISTS participant_profiles (
   id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, email TEXT NOT NULL,
-  display_name TEXT NOT NULL, location_id TEXT, sponsor_membership_id TEXT,
+  display_name TEXT NOT NULL, password_hash TEXT, location_id TEXT, sponsor_membership_id TEXT,
   status TEXT NOT NULL DEFAULT 'active', consent_version TEXT,
   created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
   UNIQUE(organization_id, email), FOREIGN KEY(organization_id) REFERENCES organizations(id)
@@ -84,6 +84,7 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
   addColumn('organization_memberships', 'location_id', 'TEXT');
   addColumn('participant_profiles', 'location_id', 'TEXT');
   addColumn('participant_profiles', 'sponsor_membership_id', 'TEXT');
+  addColumn('participant_profiles', 'password_hash', 'TEXT');
   addColumn('organization_invites', 'location_id', 'TEXT');
   addColumn('organization_invites', 'sponsor_membership_id', 'TEXT');
   addColumn('organization_memberships', 'password_hash', 'TEXT');
@@ -129,7 +130,7 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       const membership = this.addStaff({ organizationId: organization.id, email: `staff-${suffix}@dev.local`, displayName: 'Developer Staff', role: 'owner' });
       const staffSession = this.createStaffSession({ membershipId: membership.id });
       const invite = this.createInvite(staffSession.token, { email: `participant-${suffix}@dev.local` });
-      const participantSession = this.redeemInvite({ inviteToken: invite.inviteToken, email: invite.email, displayName: 'Developer Participant' });
+      const participantSession = this.redeemInvite({ inviteToken: invite.inviteToken, email: invite.email, displayName: 'Developer Participant', password: 'developer-pass-123' });
       const extension = this.createExtensionLink(participantSession.token);
       return { organization, staffSession, participantSession, extension, developmentOnly: true };
     },
@@ -217,7 +218,8 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       if (!invite) throw new Error('Invite is invalid, expired, or already used.');
       const participantEmail = email(input.email || invite.email); if (participantEmail !== invite.email) throw new Error('Invite email does not match.');
       const participantId = id('participant'); const displayName = bounded(input.displayName || participantEmail);
-      const tx = db.transaction(() => { db.prepare('INSERT INTO participant_profiles (id, organization_id, email, display_name, location_id, sponsor_membership_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, email) DO UPDATE SET display_name=excluded.display_name, location_id=excluded.location_id, sponsor_membership_id=excluded.sponsor_membership_id, status=\'active\', updated_at=excluded.updated_at').run(participantId, invite.organization_id, participantEmail, displayName, invite.location_id, invite.sponsor_membership_id, stamp(), stamp()); db.prepare('UPDATE organization_invites SET redeemed_at = ? WHERE id = ?').run(stamp(), invite.id); recordEvent({ organizationId: invite.organization_id, actorType: 'participant', actorId: participantId, eventType: 'participant_onboarded', subjectType: 'participant', subjectId: participantId, metadata: { locationId: invite.location_id } }); }); tx();
+      const participantPassword = bounded(input.password, 200); if (participantPassword.length < 8) throw new Error('Password must be at least 8 characters.');
+      const tx = db.transaction(() => { db.prepare('INSERT INTO participant_profiles (id, organization_id, email, display_name, password_hash, location_id, sponsor_membership_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, email) DO UPDATE SET display_name=excluded.display_name, password_hash=excluded.password_hash, location_id=excluded.location_id, sponsor_membership_id=excluded.sponsor_membership_id, status=\'active\', updated_at=excluded.updated_at').run(participantId, invite.organization_id, participantEmail, displayName, passwordHash(participantPassword), invite.location_id, invite.sponsor_membership_id, stamp(), stamp()); db.prepare('UPDATE organization_invites SET redeemed_at = ? WHERE id = ?').run(stamp(), invite.id); recordEvent({ organizationId: invite.organization_id, actorType: 'participant', actorId: participantId, eventType: 'participant_onboarded', subjectType: 'participant', subjectId: participantId, metadata: { locationId: invite.location_id } }); }); tx();
       const participant = db.prepare('SELECT id, organization_id AS organizationId, email, display_name AS displayName, status FROM participant_profiles WHERE organization_id = ? AND email = ?').get(invite.organization_id, participantEmail);
       return { token: issueSession('participant', participant.id, participant.organizationId, 12), participant, organization: org(invite.organization_id) };
     },
@@ -232,6 +234,7 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       recordEvent({ organizationId: invite.organization_id, actorType: 'staff', actorId: membership.id, eventType: 'staff_onboarded', subjectType: 'membership', subjectId: membership.id, metadata: { role: invite.role, locationId: invite.location_id } });
       return this.createStaffSession({ membershipId: membership.id });
     },
+    loginParticipant(input = {}) { const participantEmail = email(input.email); const row = db.prepare('SELECT * FROM participant_profiles WHERE email = ? AND status = \'active\'').get(participantEmail); if (!row || !passwordMatches(input.password, row.password_hash)) throw new Error('Email or password is incorrect.'); const participant = { id: row.id, organizationId: row.organization_id, email: row.email, displayName: row.display_name, status: row.status }; return { token: issueSession('participant', row.id, row.organization_id, 12), participant, organization: org(row.organization_id) }; },
     participantFromSession(rawSession) { const actor = session(rawSession, 'participant'); const participant = db.prepare('SELECT id, organization_id AS organizationId, email, display_name AS displayName, status FROM participant_profiles WHERE id = ? AND organization_id = ?').get(actor.subject_id, actor.organization_id); if (!participant) throw new Error('Participant not found.'); return { participant, organization: org(actor.organization_id) }; },
     createExtensionLink(rawSession) { const actor = session(rawSession, 'participant'); const raw = token(12); const record = { id: id('link'), participant_id: actor.subject_id, organization_id: actor.organization_id, code_hash: hash(raw), expires_at: expiry(1), created_at: stamp() }; db.prepare('INSERT INTO extension_link_codes (id, participant_id, organization_id, code_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(...Object.values(record)); recordEvent({ organizationId: actor.organization_id, actorType: 'participant', actorId: actor.subject_id, eventType: 'extension_link_issued', subjectType: 'extension_link', subjectId: record.id }); return { code: raw, expiresAt: record.expires_at }; },
     claimExtensionLink(input = {}) { const link = db.prepare("SELECT * FROM extension_link_codes WHERE code_hash = ? AND claimed_at IS NULL AND expires_at > datetime('now')").get(hash(input.code || '')); if (!link) throw new Error('Link code is invalid, expired, or already used.'); db.prepare('UPDATE extension_link_codes SET claimed_at = ? WHERE id = ?').run(stamp(), link.id); const extensionToken = issueSession('extension', link.participant_id, link.organization_id, 24 * 30); recordEvent({ organizationId: link.organization_id, actorType: 'extension', actorId: link.participant_id, eventType: 'extension_linked', subjectType: 'extension_link', subjectId: link.id }); return { token: extensionToken, participantId: link.participant_id, organizationId: link.organization_id }; },
