@@ -27,6 +27,7 @@ const routes = {
   organizationCreateStaffInvite: "staff/invite/create",
   organizationRedeemStaffInvite: "staff/invite/redeem",
   organizationStaffAccount: "staff/account",
+  organizationLogin: "login",
 };
 const apiOrigin =
   import.meta.env.DEV &&
@@ -112,6 +113,9 @@ export function StaffPortal() {
   const [staffInvite, setStaffInvite] = useState(null);
   const [staffInviteToken] = useState(() => new URLSearchParams(window.location.search).get("staffInvite") || "");
   const [staffRedeemForm, setStaffRedeemForm] = useState({ email: "", displayName: "" });
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [setupForm, setSetupForm] = useState({ name: "", displayName: "", email: "", password: "", setupKey: "" });
+  const setupMode = new URLSearchParams(window.location.search).get("setup") === "1";
   const [dashboard, setDashboard] = useState(null);
   const [account, setAccount] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -237,6 +241,16 @@ export function StaffPortal() {
       setMessage(error.message);
     }
   };
+  const login = async (event) => {
+    event.preventDefault();
+    try { const result = await request("organizationLogin", loginForm); sessionStorage.setItem("north-star-staff-session", result.token); setSession(result.token); setMessage("Signed in."); }
+    catch (error) { setMessage(error.message); }
+  };
+  const setup = async (event) => {
+    event.preventDefault();
+    try { const result = await request("organizationBootstrap", setupForm); sessionStorage.setItem("north-star-staff-session", result.token); setSession(result.token); window.history.replaceState({}, "", window.location.pathname); setMessage("Workspace created."); }
+    catch (error) { setMessage(error.message); }
+  };
   if (!session && staffInviteToken)
     return (
       <section className="lighthouse-page partner-page">
@@ -248,6 +262,7 @@ export function StaffPortal() {
           <form className="lighthouse-form" onSubmit={redeemStaffInvite}>
             <label>Work email<input required type="email" autoComplete="email" value={staffRedeemForm.email} onChange={(event) => setStaffRedeemForm({ ...staffRedeemForm, email: event.target.value })} placeholder="you@organization.org" /></label>
             <label>Your name<input required autoComplete="name" value={staffRedeemForm.displayName} onChange={(event) => setStaffRedeemForm({ ...staffRedeemForm, displayName: event.target.value })} placeholder="Your name" /></label>
+            <label>Create password<input required minLength={8} type="password" autoComplete="new-password" value={staffRedeemForm.password || ""} onChange={(event) => setStaffRedeemForm({ ...staffRedeemForm, password: event.target.value })} placeholder="At least 8 characters" /></label>
             <button className="lighthouse-primary" type="submit">Accept invitation <ArrowRight size={16} /></button>
           </form>
           {message && <p className="lighthouse-message" role="alert">{message}</p>}
@@ -255,7 +270,7 @@ export function StaffPortal() {
         </main>
       </section>
     );
-  if (!session)
+  if (!session && !setupMode)
     return (
       <section className="lighthouse-page partner-page">
         <div className="lighthouse-topbar">
@@ -265,60 +280,22 @@ export function StaffPortal() {
           </a>
         </div>
         <main className="lighthouse-content setup-content">
-          <span className="lighthouse-kicker">PARTNER ADMIN</span>
-          <h1>Set up your partner workspace.</h1>
-          <p className="lighthouse-lede">
-            Create a private workspace for your team to invite participants and
-            support their employment goals.
-          </p>
-          <form className="lighthouse-form" onSubmit={bootstrap}>
-            <label>
-              Organization name
-              <input
-                name="organizationName"
-                autoComplete="organization"
-                required
-                value={form.name}
-                onChange={(event) =>
-                  setForm({ ...form, name: event.target.value })
-                }
-                placeholder="Harbor Works"
-              />
-            </label>
-            <label>
-              Your name
-              <input
-                name="displayName"
-                autoComplete="name"
-                required
-                value={form.displayName}
-                onChange={(event) =>
-                  setForm({ ...form, displayName: event.target.value })
-                }
-                placeholder="Your name"
-              />
-            </label>
-            <label>
-              Work email
-              <input
-                name="email"
-                autoComplete="email"
-                required
-                type="email"
-                value={form.email}
-                onChange={(event) =>
-                  setForm({ ...form, email: event.target.value })
-                }
-                placeholder="you@organization.org"
-              />
-            </label>
-            <button className="lighthouse-primary" type="submit">
-              Create workspace <ArrowRight size={16} />
-            </button>
+          <span className="lighthouse-kicker">PARTNER LOGIN</span>
+          <h1>Welcome back.</h1>
+          <p className="lighthouse-lede">Sign in to open your partner workspace.</p>
+          <form className="lighthouse-form" onSubmit={login}>
+            <label>Work email<input required type="email" autoComplete="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder="you@organization.org" /></label>
+            <label>Password<input required type="password" autoComplete="current-password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder="Your password" /></label>
+            <button className="lighthouse-primary" type="submit">Sign in <ArrowRight size={16} /></button>
           </form>
+          {message && <p className="lighthouse-message" role="alert">{message}</p>}
           <PrivacyNote />
         </main>
       </section>
+    );
+  if (!session && setupMode)
+    return (
+      <section className="lighthouse-page partner-page"><div className="lighthouse-topbar"><Brand partner /></div><main className="lighthouse-content setup-content"><span className="lighthouse-kicker">OWNER SETUP</span><h1>Create your partner workspace.</h1><p className="lighthouse-lede">This protected setup is for the Lighthouse owner only.</p><form className="lighthouse-form" onSubmit={setup}><label>Organization name<input required value={setupForm.name} onChange={(event) => setSetupForm({ ...setupForm, name: event.target.value })} placeholder="Harbor Works" /></label><label>Your name<input required value={setupForm.displayName} onChange={(event) => setSetupForm({ ...setupForm, displayName: event.target.value })} placeholder="Your name" /></label><label>Work email<input required type="email" value={setupForm.email} onChange={(event) => setSetupForm({ ...setupForm, email: event.target.value })} placeholder="you@organization.org" /></label><label>Create password<input required minLength={8} type="password" autoComplete="new-password" value={setupForm.password} onChange={(event) => setSetupForm({ ...setupForm, password: event.target.value })} placeholder="At least 8 characters" /></label><label>Owner setup key<input required type="password" value={setupForm.setupKey} onChange={(event) => setSetupForm({ ...setupForm, setupKey: event.target.value })} placeholder="Provided by Lighthouse" /></label><button className="lighthouse-primary" type="submit">Create workspace <ArrowRight size={16} /></button></form>{message && <p className="lighthouse-message" role="alert">{message}</p>}<PrivacyNote /></main></section>
     );
   const count = dashboard?.counts?.participants ?? 0;
   return (

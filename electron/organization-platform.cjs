@@ -7,6 +7,8 @@ const now = () => new Date().toISOString();
 const id = (prefix) => `${prefix}-${crypto.randomUUID()}`;
 const token = (bytes = 24) => crypto.randomBytes(bytes).toString('base64url');
 const hash = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+const passwordHash = (value) => { const salt = crypto.randomBytes(16); return `${salt.toString('hex')}:${crypto.scryptSync(String(value), salt, 32).toString('hex')}`; };
+const passwordMatches = (value, stored) => { const [saltHex, expected] = String(stored || '').split(':'); if (!saltHex || !expected) return false; const actual = crypto.scryptSync(String(value), Buffer.from(saltHex, 'hex'), 32).toString('hex'); return actual.length === expected.length && crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected)); };
 const bounded = (value, max = 500) => String(value ?? '').trim().slice(0, max);
 const email = (value) => bounded(value, 320).toLowerCase();
 const expiry = (hours) => new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
@@ -79,6 +81,7 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
   addColumn('participant_profiles', 'sponsor_membership_id', 'TEXT');
   addColumn('organization_invites', 'location_id', 'TEXT');
   addColumn('organization_invites', 'sponsor_membership_id', 'TEXT');
+  addColumn('organization_memberships', 'password_hash', 'TEXT');
   const stamp = () => clock();
   const issueSession = (subjectType, subjectId, organizationId, hours = 24) => {
     const raw = token();
@@ -126,8 +129,8 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       const role = ['owner', 'admin', 'manager', 'employee', 'staff'].includes(input.role) ? input.role : 'staff';
       const locationId = bounded(input.locationId, 160) || null;
       if (locationId && !db.prepare('SELECT id FROM organization_locations WHERE id = ? AND organization_id = ? AND status = \'active\'').get(locationId, organizationId)) throw new Error('Staff location not found.');
-      const membership = { id: id('membership'), organization_id: organizationId, email: staffEmail, display_name: displayName, role, location_id: locationId, created_at: stamp(), updated_at: stamp() };
-      db.prepare('INSERT INTO organization_memberships (id, organization_id, email, display_name, role, location_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, email) DO UPDATE SET display_name=excluded.display_name, role=excluded.role, location_id=excluded.location_id, status=\'active\', updated_at=excluded.updated_at').run(...Object.values(membership));
+      const rawPassword = bounded(input.password, 200); const membership = { id: id('membership'), organization_id: organizationId, email: staffEmail, display_name: displayName, role, location_id: locationId, password_hash: rawPassword ? passwordHash(rawPassword) : null, created_at: stamp(), updated_at: stamp() };
+      db.prepare('INSERT INTO organization_memberships (id, organization_id, email, display_name, role, location_id, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, email) DO UPDATE SET display_name=excluded.display_name, role=excluded.role, location_id=excluded.location_id, password_hash=COALESCE(excluded.password_hash, organization_memberships.password_hash), status=\'active\', updated_at=excluded.updated_at').run(...Object.values(membership));
       return db.prepare('SELECT id, organization_id AS organizationId, email, display_name AS displayName, role, status FROM organization_memberships WHERE organization_id = ? AND email = ?').get(organizationId, staffEmail);
     },
     createLocation(rawSession, input = {}) {
@@ -168,6 +171,17 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
       if (!membership) throw new Error('Staff membership not found.');
       return { token: issueSession('staff', membership.id, membership.organization_id), organization: org(membership.organization_id), membership: { id: membership.id, email: membership.email, displayName: membership.display_name, role: membership.role } };
     },
+    loginStaff(input = {}) {
+      const staffEmail = email(input.email); const membership = db.prepare('SELECT * FROM organization_memberships WHERE email = ? AND status = \'active\'').get(staffEmail);
+      if (!membership || !passwordMatches(input.password, membership.password_hash)) throw new Error('Email or password is incorrect.');
+      return this.createStaffSession({ membershipId: membership.id });
+    },
+    setStaffPassword(input = {}) {
+      const membership = db.prepare('SELECT id, organization_id AS organizationId FROM organization_memberships WHERE email = ? AND status = \'active\'').get(email(input.email));
+      if (!membership || String(input.password || '').length < 8) throw new Error('Active staff account and password of at least 8 characters are required.');
+      db.prepare('UPDATE organization_memberships SET password_hash = ?, updated_at = ? WHERE id = ?').run(passwordHash(input.password), stamp(), membership.id);
+      return this.createStaffSession({ membershipId: membership.id });
+    },
     staffAccount(rawSession) {
       const actor = session(rawSession, 'staff');
       const membership = db.prepare('SELECT id, email, display_name AS displayName, role, location_id AS locationId, status FROM organization_memberships WHERE id = ? AND status = \'active\'').get(actor.subject_id);
@@ -198,10 +212,10 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
     redeemStaffInvite(input = {}) {
       const invite = db.prepare("SELECT * FROM organization_invites WHERE token_hash = ? AND role IN ('manager', 'employee') AND redeemed_at IS NULL AND expires_at > datetime('now')").get(hash(input.inviteToken || ''));
       if (!invite) throw new Error('Staff invite is invalid, expired, or already used.');
-      const staffEmail = email(input.email); const displayName = bounded(input.displayName);
+      const staffEmail = email(input.email); const displayName = bounded(input.displayName); const password = bounded(input.password, 200);
       if (staffEmail !== invite.email) throw new Error('Invite email does not match.');
-      if (!displayName) throw new Error('Your name is required.');
-      const membership = this.addStaff({ organizationId: invite.organization_id, email: staffEmail, displayName, role: invite.role, locationId: invite.location_id });
+      if (!displayName || password.length < 8) throw new Error('Your name and a password of at least 8 characters are required.');
+      const membership = this.addStaff({ organizationId: invite.organization_id, email: staffEmail, displayName, password, role: invite.role, locationId: invite.location_id });
       db.prepare('UPDATE organization_invites SET redeemed_at = ? WHERE id = ?').run(stamp(), invite.id);
       recordEvent({ organizationId: invite.organization_id, actorType: 'staff', actorId: membership.id, eventType: 'staff_onboarded', subjectType: 'membership', subjectId: membership.id, metadata: { role: invite.role, locationId: invite.location_id } });
       return this.createStaffSession({ membershipId: membership.id });

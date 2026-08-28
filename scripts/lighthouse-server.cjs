@@ -14,7 +14,9 @@ const route = async (request, response) => {
   if (request.method === 'POST' && request.url?.startsWith('/api/organization/')) {
     try {
       const action = request.url.slice('/api/organization/'.length); const body = await readBody(request); let result;
-      if (action === 'bootstrap') { const organization = platform.createOrganization(body); const membership = platform.addStaff({ organizationId: organization.id, email: body.email, displayName: body.displayName, role: 'owner' }); result = platform.createStaffSession({ membershipId: membership.id }); }
+      if (action === 'bootstrap') { if (!process.env.LIGHTHOUSE_SETUP_KEY || body.setupKey !== process.env.LIGHTHOUSE_SETUP_KEY) throw new Error('Owner setup is protected.'); try { const organization = platform.createOrganization(body); const membership = platform.addStaff({ organizationId: organization.id, email: body.email, displayName: body.displayName, password: body.password, role: 'owner' }); result = platform.createStaffSession({ membershipId: membership.id }); } catch (error) { if (!String(error.message || '').includes('UNIQUE constraint failed: organizations.slug')) throw error; result = platform.setStaffPassword(body); } }
+      else if (action === 'owner/password') { if (!process.env.LIGHTHOUSE_SETUP_KEY || body.setupKey !== process.env.LIGHTHOUSE_SETUP_KEY) throw new Error('Owner setup is protected.'); result = platform.setStaffPassword(body); }
+      else if (action === 'login') result = platform.loginStaff(body);
       else if (action === 'dev/seed') { if (process.env.LIGHTHOUSE_DEV_MODE !== '1' || !['127.0.0.1', '::1'].includes(request.socket.remoteAddress)) throw new Error('Developer test path is disabled.'); result = platform.createDevelopmentScenario(); }
       else if (action === 'dashboard') result = platform.dashboard(body);
       else if (action === 'staff/account') result = platform.staffAccount(body.sessionToken || body);

@@ -14,10 +14,12 @@ test('staff invitation creates a scoped staff session and is single-use', () => 
     const ownerSession = platform.createStaffSession({ membershipId: owner.id });
     const invite = platform.createStaffInvite(ownerSession.token, { email: 'staff@harbor.org', displayName: 'Staff member', role: 'employee' });
     assert.equal(invite.email, 'staff@harbor.org');
-    const staffSession = platform.redeemStaffInvite({ inviteToken: invite.inviteToken, email: 'staff@harbor.org', displayName: 'Staff member' });
+    const staffSession = platform.redeemStaffInvite({ inviteToken: invite.inviteToken, email: 'staff@harbor.org', displayName: 'Staff member', password: 'staff-pass-123' });
     assert.equal(staffSession.membership.role, 'employee');
     assert.equal(staffSession.membership.email, 'staff@harbor.org');
-    assert.throws(() => platform.redeemStaffInvite({ inviteToken: invite.inviteToken, email: 'staff@harbor.org', displayName: 'Staff member' }), /invalid, expired, or already used/);
+    const loggedIn = platform.loginStaff({ email: 'staff@harbor.org', password: 'staff-pass-123' });
+    assert.equal(loggedIn.membership.id, staffSession.membership.id);
+    assert.throws(() => platform.redeemStaffInvite({ inviteToken: invite.inviteToken, email: 'staff@harbor.org', displayName: 'Staff member', password: 'staff-pass-123' }), /invalid, expired, or already used/);
   } finally {
     platform.close();
     fs.rmSync(dir, { recursive: true, force: true });
