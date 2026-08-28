@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowRight,
+  BriefcaseBusiness,
   Building2,
   Check,
   Clipboard,
   HelpCircle,
   Home,
+  MessageCircle,
   Plus,
   RefreshCw,
   ShieldCheck,
+  UserRound,
   Users,
 } from "lucide-react";
 import "./organization.css";
@@ -509,6 +512,7 @@ function ParticipantPortal() {
   const [profile, setProfile] = useState(null);
   const [link, setLink] = useState(null);
   const [message, setMessage] = useState("");
+  const [activeView, setActiveView] = useState("home");
   useEffect(() => {
     if (session)
       request("organizationParticipantMe", session)
@@ -583,7 +587,8 @@ function ParticipantPortal() {
             <span className="lighthouse-kicker">WELCOME</span>
             <h1>Your next opportunity starts here.</h1>
             <p className="lighthouse-lede">
-              Join your employment workspace to find work that fits your goals.
+              Track the opportunities you are working on, get help completing
+              applications, and keep your career information in one private place.
               Your information stays yours.
             </p>
           </div>
@@ -651,59 +656,60 @@ function ParticipantPortal() {
         </main>
       </section>
     );
+  const logout = () => {
+    sessionStorage.removeItem("lighthouse-participant-session");
+    setSession("");
+    setProfile(null);
+    setLink(null);
+    setActiveView("home");
+  };
+  const views = {
+    home: {
+      label: "Overview",
+      title: `Welcome, ${profile.participant.displayName}.`,
+      lede: `Your private workspace with ${profile.organization.name}. Keep every opportunity and application moving forward.`,
+    },
+    saved: { label: "Saved opportunities", title: "Saved opportunities", lede: "Jobs you want to come back to live here." },
+    applications: { label: "Applications", title: "Your applications", lede: "Track what you have started, what needs attention, and what is next." },
+    interviews: { label: "Interview prep", title: "Interview prep", lede: "Prepare for conversations with practical guidance and notes." },
+    messages: { label: "Messages", title: "Messages", lede: "Stay connected with the staff supporting your goals." },
+    profile: { label: "Profile", title: "Your profile", lede: "Review the information used to support your applications." },
+  };
+  const view = views[activeView];
   return (
     <section className="lighthouse-page participant-page">
-      <div className="lighthouse-topbar">
-        <Brand />
-        <a href="#help">
-          <HelpCircle size={16} /> Help
-        </a>
+      <div className="participant-shell">
+        <aside className="participant-sidebar">
+          <Brand />
+          <nav className="participant-nav" aria-label="Participant workspace">
+            <button className={activeView === "home" ? "active" : ""} onClick={() => setActiveView("home")}><Home size={17} /> Overview</button>
+            <button className={activeView === "saved" ? "active" : ""} onClick={() => setActiveView("saved")}><BriefcaseBusiness size={17} /> Saved opportunities</button>
+            <button className={activeView === "applications" ? "active" : ""} onClick={() => setActiveView("applications")}><Clipboard size={17} /> Applications</button>
+            <button className={activeView === "interviews" ? "active" : ""} onClick={() => setActiveView("interviews")}><Check size={17} /> Interview prep</button>
+            <button className={activeView === "messages" ? "active" : ""} onClick={() => setActiveView("messages")}><MessageCircle size={17} /> Messages</button>
+          </nav>
+          <div className="participant-nav-bottom">
+            <button className={activeView === "profile" ? "active" : ""} onClick={() => setActiveView("profile")}><UserRound size={17} /> Profile</button>
+            <button onClick={logout}><ArrowRight size={17} /> Log out</button>
+          </div>
+        </aside>
+        <div className="participant-main">
+          <div className="lighthouse-topbar">
+            <Brand />
+            <div className="topbar-right"><span className="privacy-chip"><ShieldCheck size={15} /> Privacy first</span><a href="#help"><HelpCircle size={16} /> Help</a></div>
+          </div>
+          <main className="lighthouse-content participant-content">
+            <div className="participant-intro"><span className="lighthouse-kicker">{view.label.toUpperCase()}</span><h1>{view.title}</h1><p className="lighthouse-lede">{view.lede}</p></div>
+            {activeView === "home" ? <>
+              <div className="participant-stat-grid"><div><BriefcaseBusiness size={20} /><b>0</b><span>Saved opportunities</span></div><div><Clipboard size={20} /><b>0</b><span>Applications in progress</span></div><div><Check size={20} /><b>0</b><span>Interviews coming up</span></div></div>
+              <div className="participant-card-grid"><section className="participant-card"><span className="lighthouse-kicker">NEXT STEP</span><h2>Save an opportunity to get started</h2><p>When a job is shared with you, save it here so you can open it later and work through the application at your pace.</p><button className="outline-button" onClick={() => setActiveView("saved")}>View saved opportunities <ArrowRight size={15} /></button></section><section className="participant-card"><span className="lighthouse-kicker">YOUR SUPPORT</span><h2>Need help with an application?</h2><p>Your staff can help you review an opportunity, prepare answers, and keep track of what is left to do.</p><button className="outline-button" onClick={() => setActiveView("messages")}>Open messages <ArrowRight size={15} /></button></section></div>
+              <section className="participant-card extension-card"><div><span className="lighthouse-kicker">OPTIONAL CONNECTION</span><h2>Connect ApplyPilot</h2><p>Use a one-time code to connect the browser helper when you are ready to fill out an application. Staff cannot see your applications, documents, or email.</p></div><button className="lighthouse-primary" onClick={issueLink}>Generate extension code <ArrowRight size={16} /></button>{link && <div className="code-result"><code>{link.code}</code><span>Expires {new Date(link.expiresAt).toLocaleString()}</span></div>}</section>
+            </> : <section className="participant-empty"><div className="connected-icon">{activeView === "messages" ? <MessageCircle size={20} /> : <BriefcaseBusiness size={20} />}</div><h2>{activeView === "profile" ? profile.participant.displayName : `Nothing here yet`}</h2><p>{activeView === "saved" ? "Saved opportunities shared with you will appear here." : activeView === "applications" ? "Applications you begin will appear here with their next step." : activeView === "interviews" ? "Upcoming interviews and preparation notes will appear here." : activeView === "messages" ? "Messages from your support team will appear here." : `Connected to ${profile.organization.name}.`}</p></section>}
+            {message && <p className="lighthouse-message" role="status">{message}</p>}
+            <footer className="lighthouse-footer"><span>Your career workspace is private by default.</span><a href="#help">Get help <ArrowRight size={14} /></a></footer>
+          </main>
+        </div>
       </div>
-      <main className="lighthouse-content participant-content">
-        <div className="participant-intro">
-          <span className="lighthouse-kicker">YOUR WORKSPACE</span>
-          <h1>Welcome, {profile.participant.displayName}.</h1>
-          <p className="lighthouse-lede">
-            You’re connected to {profile.organization.name}. Let’s take the next
-            step toward work that fits.
-          </p>
-        </div>
-        <div className="participant-grid">
-          <section className="join-panel connected-panel">
-            <div className="connected-icon">
-              <Check size={20} />
-            </div>
-            <span className="lighthouse-kicker">YOU’RE CONNECTED</span>
-            <h2>Connect ApplyPilot</h2>
-            <p>
-              Use a one-time code to connect the browser helper when you are
-              ready to apply. Staff cannot see your applications, documents, or
-              email.
-            </p>
-            <button className="lighthouse-primary" onClick={issueLink}>
-              Generate extension code <ArrowRight size={16} />
-            </button>
-            {link && (
-              <div className="code-result">
-                <code>{link.code}</code>
-                <span>Expires {new Date(link.expiresAt).toLocaleString()}</span>
-              </div>
-            )}
-          </section>
-          <PrivacyNote />
-        </div>
-        {message && (
-          <p className="lighthouse-message" role="status">
-            {message}
-          </p>
-        )}
-        <footer className="lighthouse-footer">
-          <span>Your career workspace is private by default.</span>
-          <a href="#help">
-            Get help <ArrowRight size={14} />
-          </a>
-        </footer>
-      </main>
     </section>
   );
 }
