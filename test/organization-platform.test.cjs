@@ -25,3 +25,16 @@ test('staff invitation creates a scoped staff session and is single-use', () => 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('partner setup stores the partner organization name independently of Lighthouse', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lighthouse-'));
+  const platform = createOrganizationPlatform({ databasePath: path.join(dir, 'platform.sqlite') });
+  try {
+    const organization = platform.createOrganization({ name: 'Harbor House' });
+    assert.equal(organization.name, 'Harbor House');
+    assert.notEqual(organization.name, 'North Star');
+  } finally {
+    platform.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
