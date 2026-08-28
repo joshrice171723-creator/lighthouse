@@ -73,6 +73,8 @@ test('participants can retrieve only their own uploaded documents', () => {
     const coverLetter = platform.uploadParticipantDocument(participantSession.token, { fileName: 'letter.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', documentType: 'cover_letter', dataBase64: Buffer.from('cover letter').toString('base64') });
     assert.deepEqual(platform.listParticipantDocuments(participantSession.token).map((document) => document.documentType).sort(), ['cover_letter', 'resume']);
     assert.equal(Buffer.from(platform.getParticipantDocument(participantSession.token, coverLetter.id).dataBase64, 'base64').toString(), 'cover letter');
+    platform.uploadParticipantDocument(participantSession.token, { fileName: 'Cover Letter - Harbor House.pdf', mimeType: 'application/pdf', dataBase64: Buffer.from('cover letter').toString('base64') });
+    assert.deepEqual(platform.listParticipantDocuments(participantSession.token).map((document) => document.documentType).sort(), ['cover_letter', 'cover_letter', 'resume']);
   } finally {
     platform.close();
     fs.rmSync(dir, { recursive: true, force: true });
