@@ -104,7 +104,7 @@ function PartnerSidebar({ account, onNavigate }) {
       <button className="partner-nav-item active" onClick={() => onNavigate("overview")}><Home size={18} /> Overview</button>
       <div className="partner-nav-label">WORKSPACE</div>
       <button className="partner-nav-item" onClick={() => onNavigate("participants")}><Users size={18} /> Participants</button>
-      {canManage && <><div className="partner-nav-label">RESOURCES</div><button className="partner-nav-item" onClick={() => onNavigate("manage")}><Building2 size={18} /> Locations & staff</button></>}
+      {canManage && <><div className="partner-nav-label">RESOURCES</div><button className="partner-nav-item" onClick={() => onNavigate("manage")}><>{role === "manager" ? <Users size={18} /> : <Building2 size={18} />}</> {role === "manager" ? "Staff" : "Locations & staff"}</button></>}
       <button className="partner-nav-item" onClick={() => onNavigate("support")}><HelpCircle size={18} /> Help</button>
     </nav>
     <div className="sidebar-account"><span className="sidebar-avatar">{String(account?.membership?.displayName || "?").slice(0, 1).toUpperCase()}</span><div><b>{account?.membership?.displayName || "Partner staff"}</b><span>{roleLabelText(role)}</span></div></div>
@@ -417,8 +417,8 @@ export function StaffPortal() {
         </section>
         {canManageStaff && <div id="lighthouse-manage" className="admin-tools">
           <details>
-            <summary>
-              <Plus size={15} /> Manage locations and staff
+              <summary>
+              <Plus size={15} /> {role === "manager" ? "Manage staff" : "Manage locations and staff"}
             </summary>
             <div className="admin-tools-grid">
               {canManageLocations && <form className="compact-form" onSubmit={createLocation}>
