@@ -77,6 +77,16 @@ const request = async (name, payload) => {
   return result;
 };
 
+const readParticipantUiState = (session, key, fallback) => {
+  if (!session) return fallback;
+  try {
+    const value = JSON.parse(localStorage.getItem(`lighthouse-participant-ui:${session}`) || "{}")[key];
+    return value || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 function Brand({ partner = false }) {
   return (
     <div className="lighthouse-brand">
@@ -532,11 +542,12 @@ function DocumentsView({ tab, setTab, search, setSearch, documents = [], onUploa
   ];
   const rows = tab === "Resumes" ? [{ name: "Josh_Rice_resume", status: "Uploaded", type: "PDF", detail: "Default", created: "Aug 25, 2026, 8:34 PM", edited: "Aug 25, 2026, 8:34 PM" }] : [];
   const filtered = rows.filter((row) => row.name.toLowerCase().includes(search.toLowerCase()));
-  const visibleRows = tab === "Resumes" && documents.length ? documents.filter((row) => row.fileName.toLowerCase().includes(search.toLowerCase())).map((row) => ({ name: row.fileName, type: row.mimeType.includes("pdf") ? "PDF" : "DOC", detail: "Private", created: new Date(row.createdAt).toLocaleString(), edited: new Date(row.updatedAt).toLocaleString(), id: row.id })) : filtered;
+  const documentType = tab === "Cover Letters" ? "cover_letter" : "resume";
+  const visibleRows = documents.length ? documents.filter((row) => row.documentType === documentType && row.fileName.toLowerCase().includes(search.toLowerCase())).map((row) => ({ name: row.fileName, type: row.mimeType.includes("pdf") ? "PDF" : "DOC", detail: "Private", created: new Date(row.createdAt).toLocaleString(), edited: new Date(row.updatedAt).toLocaleString(), id: row.id })) : filtered;
   return <div className="documents-view">
-    <div className="document-actions-grid">{cards.map(({ title, text, icon: Icon }) => <button className="document-action-card" key={title} type="button"><span className="document-action-icon"><Icon size={22} /></span><span><b>{title}</b><small>{text}</small></span><Plus size={20} /></button>)}</div>
+    <div className="document-actions-grid">{cards.map(({ title, text, icon: Icon }) => <button className="document-action-card" key={title} type="button" onClick={() => title === "New Cover Letter" && setTab("Cover Letters")}><span className="document-action-icon"><Icon size={22} /></span><span><b>{title}</b><small>{text}</small></span><Plus size={20} /></button>)}</div>
     <div className="document-tabs" role="tablist">{["Resumes", "Cover Letters", "Templates"].map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}><FileText size={15} /> {item}</button>)}</div>
-    <div className="document-toolbar"><span>0 selected <button type="button" className="document-delete" disabled>Delete</button></span><div><label className="document-upload"><Upload size={15} /> Upload<input className="sr-only" type="file" accept=".pdf,.doc,.docx" onChange={onUpload} /></label><select aria-label="Document filter"><option>All</option></select><label className="document-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></label></div></div>
+    <div className="document-toolbar"><span>0 selected <button type="button" className="document-delete" disabled>Delete</button></span><div><label className="document-upload"><Upload size={15} /> Upload<input className="sr-only" type="file" accept=".pdf,.doc,.docx" onChange={(event) => onUpload(event, documentType)} /></label><select aria-label="Document filter"><option>All</option></select><label className="document-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></label></div></div>
     <div className="document-table"><div className="document-table-head"><span></span><b>{tab.slice(0, -1).toUpperCase()} NAME</b><b>CREATED</b><b>LAST EDITED</b><b>ACTIONS</b></div>{visibleRows.length ? visibleRows.map((row) => <div className="document-row" key={row.id || row.name}><input type="checkbox" aria-label={`Select ${row.name}`} /><div className="document-name-cell"><span className="document-file-icon"><FileText size={18} /></span><div><b>{row.name}</b><small><em>Uploaded</em><em>{row.type}</em><em>{row.detail}</em></small></div></div><span>{row.created}</span><span>{row.edited}</span><button type="button" className="document-more">Edit&nbsp;&nbsp; More⌄</button></div>) : <div className="document-empty">No {tab.toLowerCase()} yet.</div>}</div>
   </div>;
 }
@@ -565,9 +576,14 @@ function ParticipantPortal() {
   const [link, setLink] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [message, setMessage] = useState("");
-  const [activeView, setActiveView] = useState("home");
-  const [documentTab, setDocumentTab] = useState("Resumes");
+  const [activeView, setActiveView] = useState(() => readParticipantUiState(session, "activeView", "home"));
+  const [documentTab, setDocumentTab] = useState(() => readParticipantUiState(session, "documentTab", "Resumes"));
   const [documentSearch, setDocumentSearch] = useState("");
+  useEffect(() => {
+    if (!session) return;
+    const storageKey = `lighthouse-participant-ui:${session}`;
+    try { localStorage.setItem(storageKey, JSON.stringify({ activeView, documentTab })); } catch { /* Storage may be unavailable in private browsing. */ }
+  }, [session, activeView, documentTab]);
   useEffect(() => {
     if (session)
       request("organizationParticipantMe", session)
@@ -615,10 +631,10 @@ function ParticipantPortal() {
       setMessage(error.message);
     }
   };
-  const uploadDocument = async (event) => {
+  const uploadDocument = async (event, documentType = "resume") => {
     const file = event.target.files?.[0]; if (!file) return;
     const dataBase64 = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1] || ''); reader.onerror = reject; reader.readAsDataURL(file); });
-    try { await request("organizationUploadDocument", [session, { fileName: file.name, mimeType: file.type, dataBase64 }]); setDocuments(await request("organizationParticipantDocuments", session)); setMessage("Resume uploaded. Only you can see the document."); } catch (error) { setMessage(error.message); } finally { event.target.value = ""; }
+    try { await request("organizationUploadDocument", [session, { fileName: file.name, mimeType: file.type, documentType, dataBase64 }]); setDocuments(await request("organizationParticipantDocuments", session)); setMessage(`${documentType === "cover_letter" ? "Cover letter" : "Resume"} uploaded. Only you can see the document.`); } catch (error) { setMessage(error.message); } finally { event.target.value = ""; }
   };
   const developerPath =
     ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
