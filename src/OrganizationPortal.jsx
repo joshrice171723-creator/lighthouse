@@ -23,9 +23,12 @@ const routes = {
   organizationBootstrap: "bootstrap",
   organizationDashboard: "dashboard",
   organizationListParticipants: "participants",
+  organizationResumeCount: "resume-count",
   organizationCreateInvite: "invite/create",
   organizationRedeemInvite: "invite/redeem",
   organizationParticipantMe: "participant/me",
+  organizationParticipantDocuments: "participant/documents",
+  organizationUploadDocument: "participant/documents/upload",
   organizationIssueExtensionLink: "extension/issue",
   organizationDevelopmentSeed: "dev/seed",
   organizationCreateLocation: "location/create",
@@ -160,6 +163,7 @@ export function StaffPortal() {
   const navigate = (target) => document.getElementById(`lighthouse-${target}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const [participants, setParticipants] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [resumeCount, setResumeCount] = useState(0);
   const [locationName, setLocationName] = useState("");
   const [staffForm, setStaffForm] = useState({
     email: "",
@@ -189,6 +193,7 @@ export function StaffPortal() {
       setAccount(await request("organizationStaffAccount", session));
       setParticipants(await request("organizationListParticipants", session));
       setLocations(await request("organizationListLocations", session));
+      setResumeCount((await request("organizationResumeCount", session)).count);
     } catch (error) {
       setMessage(error.message);
     }
@@ -392,7 +397,7 @@ export function StaffPortal() {
               <b>{count}</b>
               <span>Participants</span>
             </div>
-            {staffView ? <><div><Check size={20} /><b>{onboardedCount}</b><span>People onboarded</span></div><div><ArrowRight size={20} /><b>{inviteCount}</b><span>Invites sent</span></div></> : <><div><Building2 size={20} /><b>{dashboard?.locations?.length || locations.length}</b><span>Locations</span></div><div><Users size={20} /><b>{inviteCount}</b><span>Invites sent</span></div></>}
+            {staffView ? <><div><Check size={20} /><b>{onboardedCount}</b><span>People onboarded</span></div><div><FileText size={20} /><b>{resumeCount}</b><span>Resumes uploaded</span></div></> : <><div><Building2 size={20} /><b>{dashboard?.locations?.length || locations.length}</b><span>Locations</span></div><div><FileText size={20} /><b>{resumeCount}</b><span>Resumes uploaded</span></div></>}
           </div>
         </section>
         <section id="lighthouse-invite" className="invite-hero">
@@ -518,7 +523,7 @@ export function StaffPortal() {
   );
 }
 
-function DocumentsView({ tab, setTab, search, setSearch }) {
+function DocumentsView({ tab, setTab, search, setSearch, documents = [], onUpload }) {
   const cards = [
     { title: "New Resume", text: "Craft and tailor to job description", icon: FileText },
     { title: "New Cover Letter", text: "Create and customize with AI", icon: FileText },
@@ -527,11 +532,12 @@ function DocumentsView({ tab, setTab, search, setSearch }) {
   ];
   const rows = tab === "Resumes" ? [{ name: "Josh_Rice_resume", status: "Uploaded", type: "PDF", detail: "Default", created: "Aug 25, 2026, 8:34 PM", edited: "Aug 25, 2026, 8:34 PM" }] : [];
   const filtered = rows.filter((row) => row.name.toLowerCase().includes(search.toLowerCase()));
+  const visibleRows = tab === "Resumes" && documents.length ? documents.filter((row) => row.fileName.toLowerCase().includes(search.toLowerCase())).map((row) => ({ name: row.fileName, type: row.mimeType.includes("pdf") ? "PDF" : "DOC", detail: "Private", created: new Date(row.createdAt).toLocaleString(), edited: new Date(row.updatedAt).toLocaleString(), id: row.id })) : filtered;
   return <div className="documents-view">
     <div className="document-actions-grid">{cards.map(({ title, text, icon: Icon }) => <button className="document-action-card" key={title} type="button"><span className="document-action-icon"><Icon size={22} /></span><span><b>{title}</b><small>{text}</small></span><Plus size={20} /></button>)}</div>
     <div className="document-tabs" role="tablist">{["Resumes", "Cover Letters", "Templates"].map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}><FileText size={15} /> {item}</button>)}</div>
-    <div className="document-toolbar"><span>0 selected <button type="button" className="document-delete" disabled>Delete</button></span><div><button type="button" className="document-upload"><Upload size={15} /> Upload</button><select aria-label="Document filter"><option>All</option></select><label className="document-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></label></div></div>
-    <div className="document-table"><div className="document-table-head"><span></span><b>{tab.slice(0, -1).toUpperCase()} NAME</b><b>CREATED</b><b>LAST EDITED</b><b>ACTIONS</b></div>{filtered.length ? filtered.map((row) => <div className="document-row" key={row.name}><input type="checkbox" aria-label={`Select ${row.name}`} /><div className="document-name-cell"><span className="document-file-icon"><FileText size={18} /></span><div><b>{row.name}</b><small><em>{row.status}</em><em>{row.type}</em><em>{row.detail}</em></small></div></div><span>{row.created}</span><span>{row.edited}</span><button type="button" className="document-more">Edit&nbsp;&nbsp; More⌄</button></div>) : <div className="document-empty">No {tab.toLowerCase()} yet.</div>}</div>
+    <div className="document-toolbar"><span>0 selected <button type="button" className="document-delete" disabled>Delete</button></span><div><label className="document-upload"><Upload size={15} /> Upload<input className="sr-only" type="file" accept=".pdf,.doc,.docx" onChange={onUpload} /></label><select aria-label="Document filter"><option>All</option></select><label className="document-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></label></div></div>
+    <div className="document-table"><div className="document-table-head"><span></span><b>{tab.slice(0, -1).toUpperCase()} NAME</b><b>CREATED</b><b>LAST EDITED</b><b>ACTIONS</b></div>{visibleRows.length ? visibleRows.map((row) => <div className="document-row" key={row.id || row.name}><input type="checkbox" aria-label={`Select ${row.name}`} /><div className="document-name-cell"><span className="document-file-icon"><FileText size={18} /></span><div><b>{row.name}</b><small><em>Uploaded</em><em>{row.type}</em><em>{row.detail}</em></small></div></div><span>{row.created}</span><span>{row.edited}</span><button type="button" className="document-more">Edit&nbsp;&nbsp; More⌄</button></div>) : <div className="document-empty">No {tab.toLowerCase()} yet.</div>}</div>
   </div>;
 }
 
@@ -557,6 +563,7 @@ function ParticipantPortal() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [profile, setProfile] = useState(null);
   const [link, setLink] = useState(null);
+  const [documents, setDocuments] = useState([]);
   const [message, setMessage] = useState("");
   const [activeView, setActiveView] = useState("home");
   const [documentTab, setDocumentTab] = useState("Resumes");
@@ -570,6 +577,7 @@ function ParticipantPortal() {
           setSession("");
         });
   }, [session]);
+  useEffect(() => { if (session) request("organizationParticipantDocuments", session).then(setDocuments).catch(() => setDocuments([])); }, [session]);
   const redeem = async (event) => {
     event.preventDefault();
     try {
@@ -606,6 +614,11 @@ function ParticipantPortal() {
     } catch (error) {
       setMessage(error.message);
     }
+  };
+  const uploadDocument = async (event) => {
+    const file = event.target.files?.[0]; if (!file) return;
+    const dataBase64 = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1] || ''); reader.onerror = reject; reader.readAsDataURL(file); });
+    try { await request("organizationUploadDocument", [session, { fileName: file.name, mimeType: file.type, dataBase64 }]); setDocuments(await request("organizationParticipantDocuments", session)); setMessage("Resume uploaded. Only you can see the document."); } catch (error) { setMessage(error.message); } finally { event.target.value = ""; }
   };
   const developerPath =
     ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
@@ -778,7 +791,7 @@ function ParticipantPortal() {
           </div>
           <main className="lighthouse-content participant-content">
             <div className="participant-intro"><span className="lighthouse-kicker">{view.label.toUpperCase()}</span><h1>{view.title}</h1><p className="lighthouse-lede">{view.lede}</p></div>
-            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} /> : activeView === "home" ? <>
+            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} documents={documents} onUpload={uploadDocument} /> : activeView === "home" ? <>
               <div className="participant-stat-grid"><div><BriefcaseBusiness size={20} /><b>0</b><span>Saved opportunities</span></div><div><Clipboard size={20} /><b>0</b><span>Applications in progress</span></div><div><Check size={20} /><b>0</b><span>Interviews coming up</span></div></div>
               <div className="participant-card-grid"><section className="participant-card"><span className="lighthouse-kicker">NEXT STEP</span><h2>Save an opportunity to get started</h2><p>When a job is shared with you, save it here so you can open it later and work through the application at your pace.</p><button className="outline-button" onClick={() => setActiveView("saved")}>View saved opportunities <ArrowRight size={15} /></button></section><section className="participant-card"><span className="lighthouse-kicker">YOUR SUPPORT</span><h2>Need help with an application?</h2><p>Your staff can help you review an opportunity, prepare answers, and keep track of what is left to do.</p><button className="outline-button" onClick={() => setActiveView("messages")}>Open messages <ArrowRight size={15} /></button></section></div>
             </> : <section className="participant-empty"><div className="connected-icon">{activeView === "messages" ? <MessageCircle size={20} /> : <BriefcaseBusiness size={20} />}</div><h2>{activeView === "profile" ? profile.participant.displayName : `Nothing here yet`}</h2><p>{activeView === "saved" ? "Saved opportunities shared with you will appear here." : activeView === "applications" ? "Applications you begin will appear here with their next step." : activeView === "interviews" ? "Upcoming interviews and preparation notes will appear here." : activeView === "messages" ? "Messages from your support team will appear here." : `Connected to ${profile.organization.name}.`}</p></section>}

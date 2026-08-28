@@ -8,7 +8,7 @@ const root = path.join(__dirname, '..', 'dist');
 const dataRoot = process.env.LIGHTHOUSE_DATA_DIR || path.join(process.cwd(), '.lighthouse-data');
 const platform = createOrganizationPlatform({ databasePath: path.join(dataRoot, 'organization-platform.sqlite') });
 const json = (response, status, body) => { response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' }); response.end(JSON.stringify(body)); };
-const readBody = (request) => new Promise((resolve, reject) => { let body = ''; request.on('data', (chunk) => { body += chunk; if (body.length > 100000) reject(new Error('Request too large.')); }); request.on('end', () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error('Invalid JSON.')); } }); request.on('error', reject); });
+const readBody = (request) => new Promise((resolve, reject) => { let body = ''; request.on('data', (chunk) => { body += chunk; if (body.length > 14000000) reject(new Error('Request too large.')); }); request.on('end', () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error('Invalid JSON.')); } }); request.on('error', reject); });
 const route = async (request, response) => {
   if (request.method === 'OPTIONS') { response.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type' }); return response.end(); }
   if (request.method === 'POST' && request.url?.startsWith('/api/organization/')) {
@@ -29,9 +29,12 @@ const route = async (request, response) => {
       else if (action === 'staff/invite/create') result = platform.createStaffInvite(body.sessionToken, body.input || body);
       else if (action === 'staff/invite/redeem') result = platform.redeemStaffInvite(body);
       else if (action === 'participants') result = platform.listParticipants(body);
+      else if (action === 'resume-count') result = platform.resumeCount(body);
       else if (action === 'invite/create') result = platform.createInvite(body.sessionToken, body.input || body);
       else if (action === 'invite/redeem') result = platform.redeemInvite(body);
       else if (action === 'participant/me') result = platform.participantFromSession(body);
+      else if (action === 'participant/documents') result = platform.listParticipantDocuments(body);
+      else if (action === 'participant/documents/upload') result = platform.uploadParticipantDocument(body.sessionToken, body.input || body);
       else if (action === 'extension/issue') result = platform.createExtensionLink(body);
       else if (action === 'extension/claim') result = platform.claimExtensionLink(body);
       else if (action === 'oauth/state/create') result = platform.createOAuthState(body);
