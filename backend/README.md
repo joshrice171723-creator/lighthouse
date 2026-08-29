@@ -24,7 +24,7 @@ Things you may want to cover:
 * ...
 # Next Step Rails backend
 
-The Rails service is the production-directed API boundary for Next Step. PostgreSQL is configured through Rails' standard database settings and `DATABASE_URL` deployment convention.
+The Rails service is the production-directed API boundary for Next Step. PostgreSQL is configured through Rails' standard database settings and `DATABASE_URL` deployment convention. The production fallback database name is `BACKEND_DATABASE_NAME`; credentials are supplied through `BACKEND_DATABASE_USERNAME` and `BACKEND_DATABASE_PASSWORD`, never committed to the repository.
 
 Health endpoints:
 
