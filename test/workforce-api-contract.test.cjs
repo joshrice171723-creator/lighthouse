@@ -41,4 +41,7 @@ test('staff workforce UI targets Rails for reports and writes', () => {
   assert.match(ui, /name === "employment-support\/save"/);
   assert.match(ui, /employment-consent\/revoke/);
   assert.match(ui, /Revoke reporting consent/);
+  assert.match(ui, /exportEmploymentReport/);
+  assert.match(ui, /next-step-employment-report-/);
+  assert.match(ui, /Export CSV/);
 });
