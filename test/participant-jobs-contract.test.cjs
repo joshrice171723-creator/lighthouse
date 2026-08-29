@@ -20,3 +20,11 @@ test("participant tracker is wired to the Rails jobs routes", () => {
   assert.match(source, /<JobTrackerView session=\{session\} \/>/);
   assert.match(source, /Offline demo mode/);
 });
+
+test("Rails demo seed stays synthetic and repeatable", () => {
+  const source = fs.readFileSync(path.join(root, "backend", "db", "seeds.rb"), "utf8");
+  assert.match(source, /synthetic-local-demo/);
+  assert.match(source, /demo-job-1/);
+  assert.match(source, /demo-participant-session/);
+  assert.match(source, /robins-house\.test/);
+});
