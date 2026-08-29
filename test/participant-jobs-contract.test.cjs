@@ -7,9 +7,13 @@ const root = path.resolve(__dirname, "..");
 
 test("participant jobs API stays participant and tenant scoped", () => {
   const source = fs.readFileSync(path.join(root, "backend", "app", "controllers", "api", "organization", "participant_jobs_controller.rb"), "utf8");
+  const migration = fs.readFileSync(path.join(root, "backend", "db", "migrate", "20260829163000_add_application_started_at_to_participant_job_opportunities.rb"), "utf8");
   assert.match(source, /subject_type: "participant"/);
   assert.match(source, /participant_id: participant\.id, organization_id: participant\.organization_id/);
-  assert.match(source, /STATUSES = %w\[saved applied interviewing offer rejected withdrawn archived\]/);
+  assert.match(source, /STATUSES = %w\[saved in_progress applied interviewing offer rejected withdrawn archived\]/);
+  assert.match(source, /application_started_at/);
+  assert.match(source, /applicationStartedAt: job\.application_started_at/);
+  assert.match(migration, /add_column :participant_job_opportunities, :application_started_at, :datetime/);
   assert.match(source, /where\(id: job_id, participant_id: participant\.id, organization_id: participant\.organization_id\)/);
   assert.match(source, /application_url = if job\.source == "synthetic-local-demo"/);
   assert.match(source, /"http:\/\/127\.0\.0\.1:38742\/apply\/#\{slug\}\?opportunityId=#\{ERB::Util\.url_encode/);
@@ -24,7 +28,9 @@ test("participant tracker is wired to the Rails jobs routes", () => {
   assert.match(source, /<JobTrackerView session=\{session\} \/>/);
   assert.match(source, /Offline demo mode/);
   assert.match(source, /Open synthetic application/);
-  assert.match(source, /job\.applicationUrl \? <a className="text-button"/);
+  assert.match(source, /openApplication/);
+  assert.match(source, /status: "in_progress"/);
+  assert.match(source, /Open synthetic application/);
   assert.match(source, /Application link unavailable/);
 });
 

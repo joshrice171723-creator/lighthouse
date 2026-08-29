@@ -162,8 +162,8 @@ function JobTrackerView({ session }) {
   const [query, setQuery] = useState("");
   const [showColumns, setShowColumns] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [visible, setVisible] = useState({ Saved: true, Applied: true, Screen: false, Interviewing: true, Offer: true, Withdrawn: false, Ghosted: false, Rejected: true, Accepted: false, Archived: false });
-  const columns = ["Saved", "Applied", "Interviewing", "Offer", "Rejected"];
+  const [visible, setVisible] = useState({ Saved: true, "In progress": true, Applied: true, Screen: false, Interviewing: true, Offer: true, Withdrawn: false, Ghosted: false, Rejected: true, Accepted: false, Archived: false });
+  const columns = ["Saved", "In progress", "Applied", "Interviewing", "Offer", "Rejected"];
   const filtered = jobs.filter((job) => visible[job.status] && `${job.title} ${job.company}`.toLowerCase().includes(query.toLowerCase()));
   const counts = Object.fromEntries(columns.map((column) => [column, jobs.filter((job) => job.status === column).length]));
   const archiveAll = () => setJobs((current) => current.map((job) => ({ ...job, status: "Archived" })));
@@ -172,16 +172,29 @@ function JobTrackerView({ session }) {
   useEffect(() => {
     if (!session) return;
     request("organizationParticipantJobs", [session, {}]).then((result) => {
-      const remote = (result.jobs || []).map((job, index) => ({ ...job, color: ["blue", "mint", "cyan", "teal"][index % 4], icon: BriefcaseBusiness, status: job.status === "interviewing" ? "Interviewing" : job.status.charAt(0).toUpperCase() + job.status.slice(1) }));
+      const remote = (result.jobs || []).map((job, index) => ({ ...job, color: ["blue", "mint", "cyan", "teal"][index % 4], icon: BriefcaseBusiness, status: job.status === "interviewing" ? "Interviewing" : job.status === "in_progress" ? "In progress" : job.status.charAt(0).toUpperCase() + job.status.slice(1) }));
       setJobs(remote.length ? remote : trackerSeed);
       setSyncState(remote.length ? "Synced to your private workspace" : "No saved opportunities yet · showing demo examples");
     }).catch(() => setSyncState("Offline demo mode · changes stay on this page"));
   }, [session]);
   const advanceJob = async (job) => {
-    const next = { Saved: "applied", Applied: "interviewing", Interviewing: "offer", Offer: "archived" }[job.status];
+    const next = { Saved: "in_progress", "In progress": "applied", Applied: "interviewing", Interviewing: "offer", Offer: "archived" }[job.status];
     if (!next || !job.id || typeof job.id !== "string") return;
-    setJobs((current) => current.map((item) => item.id === job.id ? { ...item, status: next === "interviewing" ? "Interviewing" : next.charAt(0).toUpperCase() + next.slice(1) } : item));
+    setJobs((current) => current.map((item) => item.id === job.id ? { ...item, status: next === "interviewing" ? "Interviewing" : next === "in_progress" ? "In progress" : next.charAt(0).toUpperCase() + next.slice(1) } : item));
     try { await request("organizationParticipantJobsUpdate", [session, { jobId: job.id, status: next }]); setSyncState("Opportunity updated"); } catch (error) { setSyncState(error.message); }
+  };
+  const openApplication = async (job) => {
+    if (!job.applicationUrl) return;
+    window.open(job.applicationUrl, "_blank", "noopener,noreferrer");
+    if (job.status !== "Saved" || typeof job.id !== "string") return;
+    try {
+      const result = await request("organizationParticipantJobsUpdate", [session, { jobId: job.id, status: "in_progress" }]);
+      const updated = result.job;
+      setJobs((current) => current.map((item) => item.id === job.id ? { ...item, ...updated, status: "In progress" } : item));
+      setSyncState("Application opened · progress saved");
+    } catch (error) {
+      setSyncState(`Application opened · progress could not be saved: ${error.message}`);
+    }
   };
 
   return <section className="job-tracker" aria-label="Job tracker">
@@ -192,7 +205,7 @@ function JobTrackerView({ session }) {
     <div className="tracker-toolbar"><label className="tracker-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for roles or companies" /></label><button className="tracker-select">Applied from <ChevronRight size={16} /> Applied until</button><button className="tracker-select">Job Type <ChevronDown size={16} /></button><button className="tracker-select">Status <ChevronDown size={16} /></button><button className={`tracker-filter ${showFilters ? "active" : ""}`} onClick={() => setShowFilters((current) => !current)}><Filter size={16} /></button></div><p className="tracker-sync-state" role="status">{syncState}</p>
     <div className="tracker-bulk"><span>☑ <b>Manage Jobs</b></span><i /><button onClick={archiveAll}><Archive size={14} /> Archive all</button><div className="tracker-column-wrap"><button onClick={() => setShowColumns((current) => !current)}><b>Visible Columns (5)</b> <ChevronDown size={15} /></button>{showColumns && <div className="tracker-columns-menu">{Object.entries(visible).map(([column, checked]) => <label key={column}><input type="checkbox" checked={checked} onChange={() => toggleColumn(column)} /><span>{column}</span><b>({counts[column] ?? 0})</b></label>)}</div>}</div><span className="tracker-view-label"><Columns3 size={15} /> Columns <b>/</b> ▤ List</span></div>
     {showFilters && <div className="tracker-filter-note"><b>Quick filters</b><button onClick={() => setQuery("remote")}>Remote roles</button><button onClick={() => setQuery("engineer")}>Engineering</button><button onClick={() => { setQuery(""); setShowFilters(false); }}>Clear filters</button></div>}
-    <div className="tracker-board">{columns.filter((column) => visible[column]).map((column) => <div className="tracker-column" key={column}><div className="tracker-column-title"><span>⌁</span><b>{column.toUpperCase()}</b><em>({counts[column]})</em></div><div className="tracker-cards">{filtered.filter((job) => job.status === column).map((job) => <article className="tracker-card" key={job.id}><div className={`tracker-logo ${job.color}`}>{React.createElement(job.icon, { size: 22 })}</div><div className="tracker-card-copy"><div className="tracker-card-title"><b>{job.title}</b><button aria-label={`Favorite ${job.title}`}><Heart size={18} /></button></div><span><BuildingIcon /> {job.company}</span>{job.location && <span><MapPin size={13} /> {job.location}</span>}<div className="tracker-card-actions">{job.applicationUrl ? <a className="text-button" href={job.applicationUrl} target="_blank" rel="noreferrer">Open synthetic application</a> : <span className="muted-label">Application link unavailable</span>}<button className="text-button" type="button" onClick={() => advanceJob(job)}>{job.status === "Offer" ? "Archive opportunity" : `Move to ${({ Saved: "Applied", Applied: "Interviewing", Interviewing: "Offer" }[job.status] || "next step")}`}</button></div></div><button className="tracker-more" aria-label="More actions"><MoreHorizontal size={17} /></button></article>)}{counts[column] === 0 && <div className="tracker-empty">No jobs here yet</div>}</div></div>)}</div>
+    <div className="tracker-board">{columns.filter((column) => visible[column]).map((column) => <div className="tracker-column" key={column}><div className="tracker-column-title"><span>⌁</span><b>{column.toUpperCase()}</b><em>({counts[column]})</em></div><div className="tracker-cards">{filtered.filter((job) => job.status === column).map((job) => <article className="tracker-card" key={job.id}><div className={`tracker-logo ${job.color}`}>{React.createElement(job.icon, { size: 22 })}</div><div className="tracker-card-copy"><div className="tracker-card-title"><b>{job.title}</b><button aria-label={`Favorite ${job.title}`}><Heart size={18} /></button></div><span><BuildingIcon /> {job.company}</span>{job.location && <span><MapPin size={13} /> {job.location}</span>}<div className="tracker-card-actions">{job.applicationUrl ? <button className="text-button" type="button" onClick={() => openApplication(job)}>Open synthetic application</button> : <span className="muted-label">Application link unavailable</span>}<button className="text-button" type="button" onClick={() => advanceJob(job)}>{job.status === "Offer" ? "Archive opportunity" : `Move to ${({ Saved: "In progress", "In progress": "Applied", Applied: "Interviewing", Interviewing: "Offer" }[job.status] || "next step")}`}</button></div></div><button className="tracker-more" aria-label="More actions"><MoreHorizontal size={17} /></button></article>)}{counts[column] === 0 && <div className="tracker-empty">No jobs here yet</div>}</div></div>)}</div>
   </section>;
 }
 
