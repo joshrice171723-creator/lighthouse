@@ -14,6 +14,7 @@ Rails.application.routes.draw do
       post "participant/jobs/update" => "participant_jobs#update"
       post "participant/jobs/review" => "participant_jobs#review"
       post "participant/jobs/review-state" => "participant_jobs#review_state"
+      post "participant/application-accounts" => "participant_application_accounts#create"
       post "participant/documents" => "participant_documents#index"
       post "participant/documents/upload" => "participant_documents#create"
       post "participant/documents/access" => "participant_documents#access"
