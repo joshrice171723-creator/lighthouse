@@ -44,7 +44,8 @@ class Api::Organization::ParticipantJobsController < ApplicationController
   end
 
   def job_json(job)
-    { id: job.id, title: job.job_title, company: job.employer_name, location: job.location_text, status: job.status, source: job.source, savedAt: job.saved_at, appliedAt: job.applied_at, interviewAt: job.interview_at, offerAt: job.offer_at, updatedAt: job.updated_at }
+    slug = job.job_title.to_s.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-+\z/, "")
+    { id: job.id, title: job.job_title, company: job.employer_name, location: job.location_text, status: job.status, source: job.source, applicationUrl: "http://127.0.0.1:38742/apply/#{slug}", savedAt: job.saved_at, appliedAt: job.applied_at, interviewAt: job.interview_at, offerAt: job.offer_at, updatedAt: job.updated_at }
   end
 
   def require_json_request
