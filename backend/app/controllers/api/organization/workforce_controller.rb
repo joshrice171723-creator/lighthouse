@@ -37,7 +37,10 @@ class Api::Organization::WorkforceController < ApplicationController
     return render json: { error: "Unsupported workforce record type." }, status: :unprocessable_entity unless record_class
 
     participant_id = params[:participantId].presence || input["participantId"]
-    participant = ParticipantProfile.where(id: participant_id, organization_id: staff_session.organization_id, status: "active").first
+    participant_scope = ParticipantProfile.where(id: participant_id, organization_id: staff_session.organization_id, status: "active")
+    participant_scope = participant_scope.where(location_id: membership.location_id) if membership.location_id.present?
+    participant_scope = participant_scope.where(sponsor_membership_id: membership.id) if membership.role == "employee"
+    participant = participant_scope.first
     return render json: { error: "Participant is not in this organization." }, status: :not_found unless participant
     unless record_type == "consent" || ParticipantConsent.where(participant_id: participant.id, organization_id: staff_session.organization_id, status: "granted", revoked_at: nil).exists?
       return render json: { error: "An active participant consent is required." }, status: :forbidden
@@ -72,39 +75,41 @@ class Api::Organization::WorkforceController < ApplicationController
     from = parse_report_date(params[:from])
     to = parse_report_date(params[:to])
     date_range = from && to && from <= to ? (from.beginning_of_day..to.end_of_day) : nil
-    base = ->(model) {
-      relation = model.where(organization_id: staff_session.organization_id, participant_id: participant_ids)
+    base = ->(model, scoped_participant_ids = participant_ids) {
+      relation = model.where(organization_id: staff_session.organization_id, participant_id: scoped_participant_ids)
       date_range ? relation.where(created_at: date_range) : relation
     }
+    active_consents = ParticipantConsent.where(organization_id: staff_session.organization_id, participant_id: participant_ids, consent_type: "employment_outcomes", status: "granted", revoked_at: nil)
+    consented_participant_ids = active_consents.select(:participant_id)
+    report_base = ->(model) { base.call(model, consented_participant_ids) }
     report = {
       organizationId: staff_session.organization_id,
       locationId: membership.location_id,
-      participantCount: participant_count,
-      enrollments: base.call(ParticipantProgramEnrollment).count,
-      services: base.call(ParticipantServiceRecord).count,
-      jobOpportunities: base.call(ParticipantJobOpportunity).count,
-      jobActivities: base.call(ParticipantJobActivity).count,
-      placements: base.call(ParticipantJobPlacement).count,
-      retentionCheckins: base.call(ParticipantRetentionCheckin).count,
-      productActivities: base.call(ParticipantProductActivity).count
+      participantCount: consented_participant_ids.distinct.count,
+      enrollments: report_base.call(ParticipantProgramEnrollment).count,
+      services: report_base.call(ParticipantServiceRecord).count,
+      jobOpportunities: report_base.call(ParticipantJobOpportunity).count,
+      jobActivities: report_base.call(ParticipantJobActivity).count,
+      placements: report_base.call(ParticipantJobPlacement).count,
+      retentionCheckins: report_base.call(ParticipantRetentionCheckin).count,
+      productActivities: report_base.call(ParticipantProductActivity).count
     }
-    consents = base.call(ParticipantConsent).where(status: "granted", revoked_at: nil)
-    consented_participant_count = consents.distinct.count(:participant_id)
+    consented_participant_count = active_consents.distinct.count(:participant_id)
     metrics = if suppressed
       nil
     else
-      opportunities = base.call(ParticipantJobOpportunity)
-      placements = base.call(ParticipantJobPlacement)
-      retentions = base.call(ParticipantRetentionCheckin)
-      plans = base.call(ParticipantEmploymentPlan)
-      enrollments = base.call(ParticipantProgramEnrollment)
-      ai_usage = AiUsageExpense.where(organization_id: staff_session.organization_id, participant_id: participant_ids)
+      opportunities = report_base.call(ParticipantJobOpportunity)
+      placements = report_base.call(ParticipantJobPlacement)
+      retentions = report_base.call(ParticipantRetentionCheckin)
+      plans = report_base.call(ParticipantEmploymentPlan)
+      enrollments = report_base.call(ParticipantProgramEnrollment)
+      ai_usage = AiUsageExpense.where(organization_id: staff_session.organization_id, participant_id: consented_participant_ids)
       ai_usage = ai_usage.where(created_at: date_range) if date_range
       {
         enrolledParticipants: enrollments.distinct.count(:participant_id),
         employmentGoalsRecorded: plans.distinct.count(:participant_id),
-        servicesDelivered: base.call(ParticipantServiceRecord).count,
-        jobActivitiesRecorded: base.call(ParticipantJobActivity).count,
+        servicesDelivered: report_base.call(ParticipantServiceRecord).count,
+        jobActivitiesRecorded: report_base.call(ParticipantJobActivity).count,
         applicationsSubmitted: opportunities.where.not(applied_at: nil).count,
         interviewsRecorded: opportunities.where.not(interview_at: nil).count,
         offersRecorded: opportunities.where.not(offer_at: nil).count,
@@ -123,7 +128,7 @@ class Api::Organization::WorkforceController < ApplicationController
       nil
     else
       {
-        consent: participant_count - consents.distinct.count(:participant_id),
+        consent: participant_count - consented_participant_count,
         employmentGoal: participant_count - plans.distinct.count(:participant_id),
         enrollment: participant_count - enrollments.distinct.count(:participant_id),
         outcomeOrExit: participant_count - (placements.distinct.pluck(:participant_id) + enrollments.where.not(exit_date: nil).distinct.pluck(:participant_id)).uniq.length
