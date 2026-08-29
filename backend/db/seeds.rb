@@ -48,6 +48,10 @@ end
 
 demo_participants = ParticipantProfile.where(organization_id: organization.id, status: "active").order(:id).to_a
 demo_participants.each_with_index do |demo_participant, index|
+  enrollment = ParticipantProgramEnrollment.find_or_initialize_by(id: "demo-enrollment-#{index + 1}")
+  enrollment.assign_attributes(participant_id: demo_participant.id, organization_id: organization.id, funding_program_id: "synthetic-workforce-program", enrollment_date: Date.new(2026, 7, 1), exit_date: index == 3 ? Date.new(2026, 8, 20) : nil, exit_reason: index == 3 ? "Synthetic no-outcome exit" : nil, eligibility_status: "eligible", status: "active")
+  enrollment.save!
+
   plan = ParticipantEmploymentPlan.find_or_initialize_by(id: "demo-employment-plan-#{index + 1}")
   plan.assign_attributes(participant_id: demo_participant.id, organization_id: organization.id, goal: "Secure a stable workforce role", target_job_title: index.even? ? "Customer Success Specialist" : "Workforce Program Coordinator", target_industry: "Workforce services", action_steps: ["Complete application practice", "Review interview preparation"], review_date: Date.new(2026, 9, 15), status: "active", created_by_membership_id: staff.id)
   plan.save!
