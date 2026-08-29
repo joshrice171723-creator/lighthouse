@@ -1,0 +1,2 @@
+class OauthState < LighthouseRecord
+end

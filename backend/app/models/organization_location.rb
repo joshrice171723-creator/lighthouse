@@ -1,0 +1,2 @@
+class OrganizationLocation < LighthouseRecord
+end

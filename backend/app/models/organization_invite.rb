@@ -1,0 +1,2 @@
+class OrganizationInvite < LighthouseRecord
+end
