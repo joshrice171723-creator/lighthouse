@@ -9,13 +9,16 @@ class Api::Organization::ParticipantApplicationAccountsController < ApplicationC
 
     site_key = params[:siteKey].to_s.strip
     status = params[:status].to_s
+    source = params[:source].to_s
     return render(json: { error: "Synthetic site identity is invalid." }, status: :unprocessable_entity) unless site_key.match?(/\A[a-z0-9._:\/-]{1,180}\z/)
     return render(json: { error: "Unsupported account status." }, status: :unprocessable_entity) unless ParticipantApplicationAccount::STATUSES.include?(status)
+    return render(json: { error: "Unsupported account source." }, status: :unprocessable_entity) unless ParticipantApplicationAccount::SOURCES.include?(source)
 
     account = ParticipantApplicationAccount.where(participant_id: participant.id, organization_id: participant.organization_id, site_key: site_key).first_or_initialize
     account.status = status
+    account.source = source
     account.save!
-    render json: { account: { id: account.id, siteKey: account.site_key, status: account.status, createdAt: account.created_at } }, status: :created
+    render json: { account: { id: account.id, siteKey: account.site_key, status: account.status, source: account.source, createdAt: account.created_at } }, status: :created
   end
 
   private
