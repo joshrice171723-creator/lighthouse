@@ -20,9 +20,19 @@ test('workforce report is staff-scoped and aggregate-only', () => {
   assert.match(controller, /where\(location_id: membership\.location_id\)/);
   assert.match(controller, /suppressed = participant_count\.positive\? && participant_count < 5/);
   assert.match(controller, /report: suppressed \? nil : report/);
+  assert.match(controller, /applicationsSubmitted/);
+  assert.match(controller, /retainedAt90Days/);
+  assert.match(controller, /outcomeOrExit/);
   assert.match(controller, /detail: nil/);
   assert.match(routes, /post "workforce\/records" => "workforce#create"/);
   assert.match(routes, /post "workforce\/report" => "workforce#report"/);
   assert.match(routes, /post "employment-support\/save" => "workforce#create"/);
   assert.match(routes, /post "employment-report" => "workforce#report"/);
+});
+
+test('staff workforce UI targets Rails for reports and writes', () => {
+  const ui = fs.readFileSync(path.join(root, 'src/OrganizationPortal.jsx'), 'utf8');
+  assert.match(ui, /"employment-support\/save": "workforce\/records"/);
+  assert.match(ui, /"employment-report": "workforce\/report"/);
+  assert.match(ui, /name === "employment-support\/save"/);
 });

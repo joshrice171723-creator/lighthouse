@@ -82,7 +82,42 @@ class Api::Organization::WorkforceController < ApplicationController
       retentionCheckins: base.call(ParticipantRetentionCheckin).count,
       productActivities: base.call(ParticipantProductActivity).count
     }
-    return render json: { empty: participant_count.zero?, privacy: { participantCount: participant_count, suppressed: suppressed }, report: suppressed ? nil : report, detail: nil }
+    metrics = if suppressed
+      nil
+    else
+      opportunities = base.call(ParticipantJobOpportunity)
+      placements = base.call(ParticipantJobPlacement)
+      retentions = base.call(ParticipantRetentionCheckin)
+      plans = base.call(ParticipantEmploymentPlan)
+      enrollments = base.call(ParticipantProgramEnrollment)
+      consents = base.call(ParticipantConsent).where(status: "granted", revoked_at: nil)
+      {
+        enrolledParticipants: enrollments.distinct.count(:participant_id),
+        employmentGoalsRecorded: plans.distinct.count(:participant_id),
+        servicesDelivered: base.call(ParticipantServiceRecord).count,
+        jobActivitiesRecorded: base.call(ParticipantJobActivity).count,
+        applicationsSubmitted: opportunities.where.not(applied_at: nil).count,
+        interviewsRecorded: opportunities.where.not(interview_at: nil).count,
+        offersRecorded: opportunities.where.not(offer_at: nil).count,
+        placementsStarted: placements.count,
+        retentionCheckins: retentions.count,
+        retainedAt30Days: retentions.where(days_since_start: 30, still_employed: true).count,
+        retainedAt60Days: retentions.where(days_since_start: 60, still_employed: true).count,
+        retainedAt90Days: retentions.where(days_since_start: 90, still_employed: true).count,
+        noOutcomeExits: enrollments.where.not(exit_date: nil).where.not(participant_id: placements.select(:participant_id)).distinct.count(:participant_id)
+      }
+    end
+    missing_data = if suppressed
+      nil
+    else
+      {
+        consent: participant_count - consents.distinct.count(:participant_id),
+        employmentGoal: participant_count - plans.distinct.count(:participant_id),
+        enrollment: participant_count - enrollments.distinct.count(:participant_id),
+        outcomeOrExit: participant_count - (placements.distinct.pluck(:participant_id) + enrollments.where.not(exit_date: nil).distinct.pluck(:participant_id)).uniq.length
+      }
+    end
+    render json: { empty: participant_count.zero?, privacy: { participantCount: participant_count, suppressed: suppressed }, metrics: metrics, missingData: missing_data, report: suppressed ? nil : report, detail: nil }
   end
 
   private
