@@ -25,6 +25,10 @@ test('workforce report is staff-scoped and aggregate-only', () => {
   assert.match(controller, /outcomeOrExit/);
   assert.match(controller, /detail: nil/);
   assert.match(routes, /post "workforce\/records" => "workforce#create"/);
+  assert.match(controller, /def revoke_consent/);
+  assert.match(controller, /update_all\(status: "revoked", revoked_at: Time.current/);
+  assert.match(controller, /participant_scope = participant_scope\.where\(location_id: membership\.location_id\)/);
+  assert.match(routes, /post "workforce\/consent\/revoke" => "workforce#revoke_consent"/);
   assert.match(routes, /post "workforce\/report" => "workforce#report"/);
   assert.match(routes, /post "employment-support\/save" => "workforce#create"/);
   assert.match(routes, /post "employment-report" => "workforce#report"/);
@@ -35,4 +39,6 @@ test('staff workforce UI targets Rails for reports and writes', () => {
   assert.match(ui, /"employment-support\/save": "workforce\/records"/);
   assert.match(ui, /"employment-report": "workforce\/report"/);
   assert.match(ui, /name === "employment-support\/save"/);
+  assert.match(ui, /employment-consent\/revoke/);
+  assert.match(ui, /Revoke reporting consent/);
 });

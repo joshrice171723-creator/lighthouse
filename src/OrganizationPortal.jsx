@@ -58,6 +58,7 @@ const routes = {
   organizationParticipantInterviewPrep: "participant/interview-prep",
   organizationParticipantInterviewPrepSave: "participant/interview-prep/save",
   "employment-support/save": "workforce/records",
+  "employment-consent/revoke": "workforce/consent/revoke",
   "employment-report": "workforce/report",
 };
 const apiOrigin =
@@ -70,14 +71,14 @@ const railsApiOrigin =
   ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
     ? "http://127.0.0.1:3000"
     : "";
-const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "interview-prep/metrics", "employment-support/save", "employment-report"]);
+const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "interview-prep/metrics", "employment-support/save", "employment-consent/revoke", "employment-report"]);
 const request = async (name, payload) => {
   if (window.desktopShell?.[name])
     return window.desktopShell[name](
       ...(Array.isArray(payload) ? payload : [payload]),
     );
   const body = Array.isArray(payload)
-    ? { sessionToken: payload[0], ...(name === "employment-support/save" ? { recordType: payload[1]?.kind, participantId: payload[1]?.participantId, input: payload[1] } : { input: payload[1] }) }
+    ? { sessionToken: payload[0], ...(name === "employment-support/save" ? { recordType: payload[1]?.kind, participantId: payload[1]?.participantId, input: payload[1] } : name === "employment-consent/revoke" ? { participantId: payload[1]?.participantId } : { input: payload[1] }) }
     : (payload ?? {});
   const backendOrigin = railsRoutes.has(name) ? railsApiOrigin : apiOrigin;
   const response = await fetch(
@@ -389,6 +390,14 @@ export function StaffPortal() {
       await refresh();
     } catch (error) { setMessage(error.message); }
   };
+  const revokeConsent = async (participantId) => {
+    if (!window.confirm("Revoke this participant's consent for aggregate employment reporting?")) return;
+    try {
+      await request("employment-consent/revoke", [session, { participantId }]);
+      setMessage("Aggregate reporting consent revoked.");
+      await refresh();
+    } catch (error) { setMessage(error.message); }
+  };
   if (!session && staffInviteToken)
     return (
       <section className="lighthouse-page partner-page">
@@ -522,6 +531,7 @@ export function StaffPortal() {
                     <span>{participant.email}</span>
                   </div>
                   <em>Active</em>
+                  {canManageStaff && <button className="text-button" type="button" onClick={() => revokeConsent(participant.id)}>Revoke reporting consent</button>}
                 </div>
               ))}
             </div>

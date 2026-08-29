@@ -120,6 +120,23 @@ class Api::Organization::WorkforceController < ApplicationController
     render json: { empty: participant_count.zero?, privacy: { participantCount: participant_count, suppressed: suppressed }, metrics: metrics, missingData: missing_data, report: suppressed ? nil : report, detail: nil }
   end
 
+  def revoke_consent
+    staff_session, membership = authenticate_staff
+    return unless staff_session && membership
+    unless %w[owner admin manager].include?(membership.role)
+      return render json: { error: "This account cannot revoke workforce consent." }, status: :forbidden
+    end
+
+    participant_scope = ParticipantProfile.where(id: params[:participantId], organization_id: staff_session.organization_id, status: "active")
+    participant_scope = participant_scope.where(location_id: membership.location_id) if membership.location_id.present?
+    participant = participant_scope.first
+    return render json: { error: "Participant is not in this organization." }, status: :not_found unless participant
+
+    consents = ParticipantConsent.where(participant_id: participant.id, organization_id: staff_session.organization_id, status: "granted", revoked_at: nil)
+    revoked = consents.update_all(status: "revoked", revoked_at: Time.current, updated_at: Time.current)
+    render json: { participantId: participant.id, organizationId: staff_session.organization_id, revokedCount: revoked }
+  end
+
   private
 
   def authenticate_staff
