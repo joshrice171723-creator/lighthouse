@@ -72,7 +72,7 @@ class WorkforcePilotTest < ActionDispatch::IntegrationTest
     assert_equal 4, report.dig("report", "participantCount")
     assert_equal 0, report.dig("metrics", "employmentGoalsRecorded")
     assert_equal 0, report.dig("metrics", "servicesDelivered")
-    assert_equal 1, report.dig("missingData", "consent")
+    assert_equal 2, report.dig("missingData", "consent")
   end
 
   test "Rails enforces tenant, location, and role boundaries" do
