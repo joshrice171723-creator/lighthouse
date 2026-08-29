@@ -28,6 +28,7 @@ test("participant document catalog is Rails-authoritative and metadata-only", ()
   const routes = fs.readFileSync(path.join(root, "backend", "config", "routes.rb"), "utf8");
   const ui = fs.readFileSync(path.join(root, "src", "OrganizationPortal.jsx"), "utf8");
   assert.match(controller, /participant_id: participant\.id, organization_id: participant\.organization_id/);
+  assert.match(controller, /render json: documents\.map/);
   assert.match(controller, /byteSize: document\.byte_size/);
   assert.doesNotMatch(controller.slice(controller.indexOf("def document_json"), controller.indexOf("def require_json_request")), /storage_path/);
   assert.match(routes, /post "participant\/documents" => "participant_documents#index"/);

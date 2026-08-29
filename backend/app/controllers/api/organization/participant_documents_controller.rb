@@ -12,7 +12,7 @@ class Api::Organization::ParticipantDocumentsController < ApplicationController
 
     documents = ParticipantDocument.where(participant_id: participant.id, organization_id: participant.organization_id)
                                    .order(updated_at: :desc).limit(50)
-    render json: { documents: documents.map { |document| document_json(document) } }
+    render json: documents.map { |document| document_json(document) }
   end
 
   def create
