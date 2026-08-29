@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const BetterSqlite3 = require('better-sqlite3');
+const { runMigrations } = require('./migrations/participant-employment-support.cjs');
 
 const now = () => new Date().toISOString();
 const id = (prefix) => `${prefix}-${crypto.randomUUID()}`;
@@ -98,6 +99,8 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
   addColumn('organization_invites', 'sponsor_membership_id', 'TEXT');
   addColumn('organization_memberships', 'password_hash', 'TEXT');
   const stamp = () => clock();
+  // Keep the legacy bootstrap schema intact, then apply versioned additions safely.
+  runMigrations(db, stamp);
   const issueSession = (subjectType, subjectId, organizationId, hours = 24) => {
     const raw = token();
     db.prepare('INSERT INTO platform_sessions (id, subject_type, subject_id, organization_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
@@ -116,6 +119,7 @@ function createOrganizationPlatform({ databasePath, clock = now } = {}) {
   };
   return {
     close: () => db.close(),
+    migrationStatus() { return db.prepare('SELECT version, applied_at AS appliedAt FROM platform_schema_migrations ORDER BY applied_at, version').all(); },
     createPlatformAccount(input = {}) {
       const accountEmail = email(input.email); const displayName = bounded(input.displayName || accountEmail); const password = bounded(input.password, 200);
       if (!accountEmail.includes('@') || !displayName || password.length < 8) throw new Error('Valid platform owner email, name, and password are required.');
