@@ -75,6 +75,10 @@ demo_participants.first(3).each_with_index do |demo_participant, index|
   retention.save!
 end
 
+ai_usage = AiUsageExpense.find_or_initialize_by(id: "demo-ai-usage-1")
+ai_usage.assign_attributes(organization_id: organization.id, participant_id: participant.id, provider: "synthetic", model: "demo-model", feature: "resume_guidance", usage_date: Time.zone.local(2026, 8, 16), input_tokens: 1200, output_tokens: 300, estimated_cost_cents: 4, allocation_method: "participant_activity", grant_review_status: "not_reviewed", created_at: Time.zone.local(2026, 8, 16))
+ai_usage.save!
+
 [
   ["demo-job-1", "Customer Success Specialist", "Acme Support", "Remote · United States", "saved"],
   ["demo-job-2", "Workforce Program Coordinator", "Community Pathways", "Oklahoma City, OK", "applied"]

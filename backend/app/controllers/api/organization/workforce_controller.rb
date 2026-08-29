@@ -98,6 +98,8 @@ class Api::Organization::WorkforceController < ApplicationController
       retentions = base.call(ParticipantRetentionCheckin)
       plans = base.call(ParticipantEmploymentPlan)
       enrollments = base.call(ParticipantProgramEnrollment)
+      ai_usage = AiUsageExpense.where(organization_id: staff_session.organization_id, participant_id: participant_ids)
+      ai_usage = ai_usage.where(created_at: date_range) if date_range
       {
         enrolledParticipants: enrollments.distinct.count(:participant_id),
         employmentGoalsRecorded: plans.distinct.count(:participant_id),
@@ -111,7 +113,10 @@ class Api::Organization::WorkforceController < ApplicationController
         retainedAt30Days: retentions.where(days_since_start: 30, still_employed: true).count,
         retainedAt60Days: retentions.where(days_since_start: 60, still_employed: true).count,
         retainedAt90Days: retentions.where(days_since_start: 90, still_employed: true).count,
-        noOutcomeExits: enrollments.where.not(exit_date: nil).where.not(participant_id: placements.select(:participant_id)).distinct.count(:participant_id)
+        noOutcomeExits: enrollments.where.not(exit_date: nil).where.not(participant_id: placements.select(:participant_id)).distinct.count(:participant_id),
+        aiInputTokens: ai_usage.sum(:input_tokens),
+        aiOutputTokens: ai_usage.sum(:output_tokens),
+        aiEstimatedCostCents: ai_usage.sum(:estimated_cost_cents)
       }
     end
     missing_data = if suppressed

@@ -23,6 +23,8 @@ test('workforce report is staff-scoped and aggregate-only', () => {
   assert.match(controller, /applicationsSubmitted/);
   assert.match(controller, /retainedAt90Days/);
   assert.match(controller, /outcomeOrExit/);
+  assert.match(controller, /aiInputTokens/);
+  assert.match(controller, /aiEstimatedCostCents/);
   assert.match(controller, /detail: nil/);
   assert.match(controller, /parse_report_date/);
   assert.match(controller, /created_at: date_range/);
