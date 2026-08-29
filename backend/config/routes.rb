@@ -10,6 +10,7 @@ Rails.application.routes.draw do
     namespace :organization do
       post "participant/interview-prep" => "interview_prep#index"
       post "participant/interview-prep/save" => "interview_prep#create"
+      post "participant/login" => "participant_sessions#create"
       post "participant/jobs" => "participant_jobs#index"
       post "participant/jobs/update" => "participant_jobs#update"
       post "participant/jobs/review" => "participant_jobs#review"
