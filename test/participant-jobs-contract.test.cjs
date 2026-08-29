@@ -12,6 +12,11 @@ test("participant jobs API stays participant and tenant scoped", () => {
   assert.match(source, /participant_id: participant\.id, organization_id: participant\.organization_id/);
   assert.match(source, /STATUSES = %w\[saved in_progress applied interviewing offer rejected withdrawn archived\]/);
   assert.match(source, /application_started_at/);
+  assert.match(source, /def review/);
+  assert.match(source, /application_review_started_at/);
+  assert.match(source, /applicationReviewStartedAt: job\.application_review_started_at/);
+  assert.match(source, /application_review_started_at: job\.application_review_started_at \|\| Time\.current/);
+  assert.match(source, /job\.update!\(application_review_started_at:/);
   assert.match(source, /applicationStartedAt: job\.application_started_at/);
   assert.match(migration, /add_column :participant_job_opportunities, :application_started_at, :datetime/);
   assert.match(source, /where\(id: job_id, participant_id: participant\.id, organization_id: participant\.organization_id\)/);
@@ -25,6 +30,7 @@ test("participant tracker is wired to the Rails jobs routes", () => {
   const source = fs.readFileSync(path.join(root, "src", "OrganizationPortal.jsx"), "utf8");
   assert.match(source, /organizationParticipantJobs: "participant\/jobs"/);
   assert.match(source, /organizationParticipantJobsUpdate: "participant\/jobs\/update"/);
+  assert.match(source, /organizationParticipantJobsReview: "participant\/jobs\/review"/);
   assert.match(source, /<JobTrackerView session=\{session\} \/>/);
   assert.match(source, /Offline demo mode/);
   assert.match(source, /Open synthetic application/);

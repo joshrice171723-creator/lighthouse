@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       post "participant/interview-prep/save" => "interview_prep#create"
       post "participant/jobs" => "participant_jobs#index"
       post "participant/jobs/update" => "participant_jobs#update"
+      post "participant/jobs/review" => "participant_jobs#review"
       post "participant/documents" => "participant_documents#index"
       post "participant/documents/upload" => "participant_documents#create"
       post "participant/documents/access" => "participant_documents#access"

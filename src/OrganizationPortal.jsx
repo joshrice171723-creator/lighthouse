@@ -61,6 +61,7 @@ const routes = {
   organizationParticipantInterviewPrepSave: "participant/interview-prep/save",
   organizationParticipantJobs: "participant/jobs",
   organizationParticipantJobsUpdate: "participant/jobs/update",
+  organizationParticipantJobsReview: "participant/jobs/review",
   "employment-support/save": "workforce/records",
   "employment-consent/revoke": "workforce/consent/revoke",
   "employment-report": "workforce/report",
