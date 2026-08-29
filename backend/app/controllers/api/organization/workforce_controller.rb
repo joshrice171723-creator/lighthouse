@@ -67,11 +67,13 @@ class Api::Organization::WorkforceController < ApplicationController
     participant_scope = ParticipantProfile.where(organization_id: staff_session.organization_id, status: "active")
     participant_scope = participant_scope.where(location_id: membership.location_id) if membership.location_id.present?
     participant_ids = participant_scope.select(:id)
+    participant_count = participant_scope.count
+    suppressed = participant_count.positive? && participant_count < 5
     base = ->(model) { model.where(organization_id: staff_session.organization_id, participant_id: participant_ids) }
     report = {
       organizationId: staff_session.organization_id,
       locationId: membership.location_id,
-      participantCount: participant_scope.count,
+      participantCount: participant_count,
       enrollments: base.call(ParticipantProgramEnrollment).count,
       services: base.call(ParticipantServiceRecord).count,
       jobOpportunities: base.call(ParticipantJobOpportunity).count,
@@ -80,7 +82,7 @@ class Api::Organization::WorkforceController < ApplicationController
       retentionCheckins: base.call(ParticipantRetentionCheckin).count,
       productActivities: base.call(ParticipantProductActivity).count
     }
-    render json: { report: report, detail: nil }
+    return render json: { empty: participant_count.zero?, privacy: { participantCount: participant_count, suppressed: suppressed }, report: suppressed ? nil : report, detail: nil }
   end
 
   private

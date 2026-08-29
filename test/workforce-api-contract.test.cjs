@@ -18,6 +18,8 @@ test('workforce API derives tenant scope and requires active consent', () => {
 test('workforce report is staff-scoped and aggregate-only', () => {
   assert.match(controller, /subject_type: "staff"/);
   assert.match(controller, /where\(location_id: membership\.location_id\)/);
+  assert.match(controller, /suppressed = participant_count\.positive\? && participant_count < 5/);
+  assert.match(controller, /report: suppressed \? nil : report/);
   assert.match(controller, /detail: nil/);
   assert.match(routes, /post "workforce\/records" => "workforce#create"/);
   assert.match(routes, /post "workforce\/report" => "workforce#report"/);
