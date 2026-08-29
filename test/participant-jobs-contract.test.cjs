@@ -24,6 +24,8 @@ test("participant tracker is wired to the Rails jobs routes", () => {
   assert.match(source, /<JobTrackerView session=\{session\} \/>/);
   assert.match(source, /Offline demo mode/);
   assert.match(source, /Open synthetic application/);
+  assert.match(source, /job\.applicationUrl \? <a className="text-button"/);
+  assert.match(source, /Application link unavailable/);
 });
 
 test("participant document catalog is Rails-authoritative and metadata-only", () => {
