@@ -20,10 +20,10 @@ class WorkforcePilotTest < ActionDispatch::IntegrationTest
     @foreign_organization = Organization.create!(id: "org-foreign", name: "Foreign Organization", slug: "foreign-organization", status: "active")
     @foreign_staff = OrganizationMembership.create!(id: "foreign-owner", organization_id: @foreign_organization.id, email: "owner@foreign.test", display_name: "Foreign Owner", role: "owner", status: "active")
 
-    @owner_token = create_session("owner-token", "staff", @owner.id, @organization.id)
-    @manager_token = create_session("manager-token", "staff", @manager.id, @organization.id)
-    @employee_token = create_session("employee-token", "staff", @employee.id, @organization.id)
-    @foreign_token = create_session("foreign-token", "staff", @foreign_staff.id, @foreign_organization.id)
+    @owner_token = seed_session("owner-token", "staff", @owner.id, @organization.id)
+    @manager_token = seed_session("manager-token", "staff", @manager.id, @organization.id)
+    @employee_token = seed_session("employee-token", "staff", @employee.id, @organization.id)
+    @foreign_token = seed_session("foreign-token", "staff", @foreign_staff.id, @foreign_organization.id)
   end
 
   test "Rails PostgreSQL workforce path records a complete journey and reports only consented participants" do
@@ -97,7 +97,7 @@ class WorkforcePilotTest < ActionDispatch::IntegrationTest
     end
   end
 
-  def create_session(token, subject_type, subject_id, organization_id)
+  def seed_session(token, subject_type, subject_id, organization_id)
     PlatformSession.create!(id: "session-#{token}", subject_type: subject_type, subject_id: subject_id, organization_id: organization_id, token_digest: Digest::SHA256.hexdigest(token), expires_at: 2.hours.from_now)
     token
   end
