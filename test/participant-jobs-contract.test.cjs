@@ -11,7 +11,10 @@ test("participant jobs API stays participant and tenant scoped", () => {
   assert.match(source, /participant_id: participant\.id, organization_id: participant\.organization_id/);
   assert.match(source, /STATUSES = %w\[saved applied interviewing offer rejected withdrawn archived\]/);
   assert.match(source, /where\(id: job_id, participant_id: participant\.id, organization_id: participant\.organization_id\)/);
-  assert.match(source, /applicationUrl: "http:\/\/127\.0\.0\.1:38742\/apply\/#\{slug\}\?opportunityId=#\{ERB::Util\.url_encode/);
+  assert.match(source, /application_url = if job\.source == "synthetic-local-demo"/);
+  assert.match(source, /"http:\/\/127\.0\.0\.1:38742\/apply\/#\{slug\}\?opportunityId=#\{ERB::Util\.url_encode/);
+  assert.match(source, /applicationUrl: application_url/);
+  assert.match(source, /job\.source == "synthetic-local-demo"/);
 });
 
 test("participant tracker is wired to the Rails jobs routes", () => {
