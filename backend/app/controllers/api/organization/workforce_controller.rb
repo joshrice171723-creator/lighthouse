@@ -2,6 +2,8 @@ require "digest"
 
 class Api::Organization::WorkforceController < ApplicationController
   RECORDS = {
+    "consent" => ParticipantConsent,
+    "profile" => ParticipantEmploymentPlan,
     "enrollment" => ParticipantProgramEnrollment,
     "service" => ParticipantServiceRecord,
     "job_opportunity" => ParticipantJobOpportunity,
@@ -12,7 +14,10 @@ class Api::Organization::WorkforceController < ApplicationController
   }.freeze
 
   ALLOWED_ATTRIBUTES = {
+    "consent" => %w[consent_type status version recorded_at revoked_at],
+    "profile" => %w[funding_program_id goal target_job_title target_start_date status],
     "enrollment" => %w[funding_program_id enrollment_date exit_date exit_reason eligibility_status status],
+    "exit" => %w[funding_program_id enrollment_date exit_date exit_reason eligibility_status status],
     "service" => %w[funding_program_id service_type service_date duration_minutes completion_status evidence_document_id outcome_summary],
     "job_opportunity" => %w[funding_program_id employer_name job_title location_text employment_type hourly_wage hours_per_week status source saved_at applied_at interview_at offer_at closed_at closed_reason],
     "job_activity" => %w[funding_program_id job_opportunity_id activity_type activity_date status staff_membership_id participant_reported evidence_document_id notes],
@@ -25,17 +30,24 @@ class Api::Organization::WorkforceController < ApplicationController
     staff_session, membership = authenticate_staff
     return unless staff_session && membership
 
-    record_type = params[:recordType].to_s
+    input = params[:input].respond_to?(:to_unsafe_h) ? params[:input].to_unsafe_h : {}
+    record_type = (params[:recordType].presence || input["kind"]).to_s
+    record_type = "enrollment" if record_type == "exit"
     record_class = RECORDS[record_type]
     return render json: { error: "Unsupported workforce record type." }, status: :unprocessable_entity unless record_class
 
-    participant = ParticipantProfile.where(id: params[:participantId], organization_id: staff_session.organization_id, status: "active").first
+    participant_id = params[:participantId].presence || input["participantId"]
+    participant = ParticipantProfile.where(id: participant_id, organization_id: staff_session.organization_id, status: "active").first
     return render json: { error: "Participant is not in this organization." }, status: :not_found unless participant
-    unless ParticipantConsent.where(participant_id: participant.id, organization_id: staff_session.organization_id, status: "granted", revoked_at: nil).exists?
+    unless record_type == "consent" || ParticipantConsent.where(participant_id: participant.id, organization_id: staff_session.organization_id, status: "granted", revoked_at: nil).exists?
       return render json: { error: "An active participant consent is required." }, status: :forbidden
     end
 
-    attributes = params.permit(*ALLOWED_ATTRIBUTES.fetch(record_type)).to_h
+    source = params[:input].present? ? params[:input] : params
+    normalized_source = ActionController::Parameters.new(source.to_unsafe_h.transform_keys { |key| key.to_s.underscore })
+    attributes = normalized_source.permit(*ALLOWED_ATTRIBUTES.fetch(record_type)).to_h
+    attributes["consent_type"] ||= input["consentType"] if record_type == "consent"
+    attributes["recorded_at"] ||= Time.current if record_type == "consent"
     record = record_class.new(attributes.merge(participant_id: participant.id, organization_id: staff_session.organization_id))
     record.staff_membership_id = membership.id if record.respond_to?(:staff_membership_id=) && record.staff_membership_id.blank?
     if record.save
