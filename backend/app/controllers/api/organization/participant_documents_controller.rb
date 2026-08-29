@@ -1,4 +1,7 @@
 require "digest"
+require "base64"
+require "fileutils"
+require "securerandom"
 
 class Api::Organization::ParticipantDocumentsController < ApplicationController
   before_action :require_json_request
@@ -10,6 +13,32 @@ class Api::Organization::ParticipantDocumentsController < ApplicationController
     documents = ParticipantDocument.where(participant_id: participant.id, organization_id: participant.organization_id)
                                    .order(updated_at: :desc).limit(50)
     render json: { documents: documents.map { |document| document_json(document) } }
+  end
+
+  def create
+    participant = participant_from_session
+    return unless participant
+
+    input = params[:input].presence || params
+    file_name = input[:fileName].to_s.gsub(/[^a-zA-Z0-9._-]/, "_")[0, 160]
+    mime_type = input[:mimeType].to_s
+    document_type = input[:documentType].to_s
+    encoded = input[:dataBase64].to_s
+    allowed_types = { "application/pdf" => ".pdf", "application/msword" => ".doc", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx" }
+    return render(json: { error: "Only PDF, DOC, and DOCX documents are supported." }, status: :unprocessable_entity) unless allowed_types.key?(mime_type) && %w[resume cover_letter].include?(document_type) && file_name.end_with?(allowed_types[mime_type])
+
+    bytes = Base64.strict_decode64(encoded)
+    return render(json: { error: "Document must be smaller than 5 MB." }, status: :unprocessable_entity) if bytes.bytesize > 5.megabytes
+
+    id = "participant-document-#{SecureRandom.uuid}"
+    storage_dir = Rails.root.join("storage", "participant-documents")
+    FileUtils.mkdir_p(storage_dir)
+    storage_path = storage_dir.join("#{id}-#{file_name}")
+    File.binwrite(storage_path, bytes)
+    document = ParticipantDocument.create!(id: id, participant_id: participant.id, organization_id: participant.organization_id, document_type: document_type, file_name: file_name, mime_type: mime_type, byte_size: bytes.bytesize, storage_path: storage_path.to_s)
+    render json: { document: document_json(document) }, status: :created
+  rescue ArgumentError
+    render json: { error: "Document encoding is invalid." }, status: :unprocessable_entity
   end
 
   private

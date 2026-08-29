@@ -29,9 +29,13 @@ test("participant document catalog is Rails-authoritative and metadata-only", ()
   const ui = fs.readFileSync(path.join(root, "src", "OrganizationPortal.jsx"), "utf8");
   assert.match(controller, /participant_id: participant\.id, organization_id: participant\.organization_id/);
   assert.match(controller, /byteSize: document\.byte_size/);
-  assert.doesNotMatch(controller, /storage_path/);
+  assert.doesNotMatch(controller.slice(controller.indexOf("def document_json"), controller.indexOf("def require_json_request")), /storage_path/);
   assert.match(routes, /post "participant\/documents" => "participant_documents#index"/);
   assert.match(ui, /organizationParticipantDocuments/);
+  assert.match(ui, /organizationUploadDocument/);
+  assert.match(routes, /post "participant\/documents\/upload" => "participant_documents#create"/);
+  assert.match(controller, /Base64\.strict_decode64/);
+  assert.match(controller, /5\.megabytes/);
 });
 
 test("Rails demo seed stays synthetic and repeatable", () => {
