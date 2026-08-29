@@ -41,6 +41,30 @@ class Api::Organization::ParticipantDocumentsController < ApplicationController
     render json: { error: "Document encoding is invalid." }, status: :unprocessable_entity
   end
 
+  def access
+    participant = participant_from_session
+    return unless participant
+    document = ParticipantDocument.where(id: params[:documentId], participant_id: participant.id, organization_id: participant.organization_id).first
+    return render(json: { error: "Document not found." }, status: :not_found) unless document
+
+    capability = document_verifier.generate({ "participantId" => participant.id, "documentId" => document.id }, expires_in: 10.minutes)
+    render json: { capability: capability, expiresInSeconds: 600, document: document_json(document) }
+  end
+
+  def download
+    participant = participant_from_session
+    return unless participant
+    payload = document_verifier.verified(params[:capability].to_s)
+    return render(json: { error: "Document capability is invalid or expired." }, status: :unauthorized) unless payload
+    return render(json: { error: "Document capability does not match this participant." }, status: :forbidden) unless payload["participantId"] == participant.id
+
+    document = ParticipantDocument.where(id: payload["documentId"], participant_id: participant.id, organization_id: participant.organization_id).first
+    return render(json: { error: "Document not found." }, status: :not_found) unless document
+    return render(json: { error: "Document storage is unavailable." }, status: :not_found) unless File.file?(document.storage_path)
+
+    send_file document.storage_path, filename: document.file_name, type: document.mime_type, disposition: "attachment"
+  end
+
   private
 
   def participant_from_session
@@ -56,6 +80,10 @@ class Api::Organization::ParticipantDocumentsController < ApplicationController
 
   def document_json(document)
     { id: document.id, fileName: document.file_name, mimeType: document.mime_type, documentType: document.document_type, byteSize: document.byte_size, createdAt: document.created_at, updatedAt: document.updated_at }
+  end
+
+  def document_verifier
+    Rails.application.message_verifier("participant-document-capability")
   end
 
   def require_json_request

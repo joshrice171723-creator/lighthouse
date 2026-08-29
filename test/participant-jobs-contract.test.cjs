@@ -36,6 +36,11 @@ test("participant document catalog is Rails-authoritative and metadata-only", ()
   assert.match(routes, /post "participant\/documents\/upload" => "participant_documents#create"/);
   assert.match(controller, /Base64\.strict_decode64/);
   assert.match(controller, /5\.megabytes/);
+  assert.match(controller, /expires_in: 10\.minutes/);
+  assert.match(controller, /participant-document-capability/);
+  assert.match(controller, /send_file document\.storage_path/);
+  assert.match(routes, /post "participant\/documents\/access" => "participant_documents#access"/);
+  assert.match(routes, /post "participant\/documents\/download" => "participant_documents#download"/);
 });
 
 test("Rails demo seed stays synthetic and repeatable", () => {

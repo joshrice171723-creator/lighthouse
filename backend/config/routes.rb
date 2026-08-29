@@ -14,6 +14,8 @@ Rails.application.routes.draw do
       post "participant/jobs/update" => "participant_jobs#update"
       post "participant/documents" => "participant_documents#index"
       post "participant/documents/upload" => "participant_documents#create"
+      post "participant/documents/access" => "participant_documents#access"
+      post "participant/documents/download" => "participant_documents#download"
       post "interview-prep/metrics" => "interview_prep_metrics#create"
       post "workforce/records" => "workforce#create"
       post "workforce/consent/revoke" => "workforce#revoke_consent"
