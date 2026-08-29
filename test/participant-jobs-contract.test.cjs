@@ -23,6 +23,17 @@ test("participant tracker is wired to the Rails jobs routes", () => {
   assert.match(source, /Open synthetic application/);
 });
 
+test("participant document catalog is Rails-authoritative and metadata-only", () => {
+  const controller = fs.readFileSync(path.join(root, "backend", "app", "controllers", "api", "organization", "participant_documents_controller.rb"), "utf8");
+  const routes = fs.readFileSync(path.join(root, "backend", "config", "routes.rb"), "utf8");
+  const ui = fs.readFileSync(path.join(root, "src", "OrganizationPortal.jsx"), "utf8");
+  assert.match(controller, /participant_id: participant\.id, organization_id: participant\.organization_id/);
+  assert.match(controller, /byteSize: document\.byte_size/);
+  assert.doesNotMatch(controller, /storage_path/);
+  assert.match(routes, /post "participant\/documents" => "participant_documents#index"/);
+  assert.match(ui, /organizationParticipantDocuments/);
+});
+
 test("Rails demo seed stays synthetic and repeatable", () => {
   const source = fs.readFileSync(path.join(root, "backend", "db", "seeds.rb"), "utf8");
   assert.match(source, /synthetic-local-demo/);

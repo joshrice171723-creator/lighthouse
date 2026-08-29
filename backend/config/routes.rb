@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       post "participant/interview-prep/save" => "interview_prep#create"
       post "participant/jobs" => "participant_jobs#index"
       post "participant/jobs/update" => "participant_jobs#update"
+      post "participant/documents" => "participant_documents#index"
       post "interview-prep/metrics" => "interview_prep_metrics#create"
       post "workforce/records" => "workforce#create"
       post "workforce/consent/revoke" => "workforce#revoke_consent"

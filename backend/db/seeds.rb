@@ -49,4 +49,8 @@ session = PlatformSession.find_or_initialize_by(id: "demo-participant-session-re
 session.assign_attributes(subject_type: "participant", subject_id: participant.id, organization_id: organization.id, token_digest: Digest::SHA256.hexdigest(session_token), expires_at: 30.days.from_now, revoked_at: nil)
 session.save!
 
+document = ParticipantDocument.find_or_initialize_by(id: "demo-resume")
+document.assign_attributes(participant_id: participant.id, organization_id: organization.id, document_type: "resume", file_name: "Alex_Johnson_Resume.pdf", mime_type: "application/pdf", byte_size: 2048, storage_path: "synthetic-local-demo/demo-resume.pdf")
+document.save!
+
 puts "Seeded disposable Next Step demo: #{participant.email} / token #{session_token}"

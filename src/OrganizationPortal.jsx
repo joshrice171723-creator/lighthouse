@@ -73,7 +73,7 @@ const railsApiOrigin =
   ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
     ? "http://127.0.0.1:3000"
     : "";
-const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "organizationParticipantJobs", "organizationParticipantJobsUpdate", "interview-prep/metrics", "employment-support/save", "employment-consent/revoke", "employment-report"]);
+const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "organizationParticipantJobs", "organizationParticipantJobsUpdate", "organizationParticipantDocuments", "interview-prep/metrics", "employment-support/save", "employment-consent/revoke", "employment-report"]);
 const request = async (name, payload) => {
   if (window.desktopShell?.[name])
     return window.desktopShell[name](
