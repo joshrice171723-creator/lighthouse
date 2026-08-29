@@ -26,6 +26,7 @@ test('workforce report is staff-scoped and aggregate-only', () => {
   assert.match(controller, /detail: nil/);
   assert.match(controller, /parse_report_date/);
   assert.match(controller, /created_at: date_range/);
+  assert.match(controller, /consentedParticipantCount/);
   assert.match(routes, /post "workforce\/records" => "workforce#create"/);
   assert.match(controller, /def revoke_consent/);
   assert.match(controller, /update_all\(status: "revoked", revoked_at: Time.current/);
@@ -48,4 +49,5 @@ test('staff workforce UI targets Rails for reports and writes', () => {
   assert.match(ui, /Export CSV/);
   assert.match(ui, /reportFrom/);
   assert.match(ui, /Refresh report/);
+  assert.match(ui, /period_from/);
 });

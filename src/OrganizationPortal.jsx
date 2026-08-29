@@ -421,6 +421,8 @@ export function StaffPortal() {
     if (!employmentReport?.metrics || employmentReport.privacy?.suppressed) return;
     const rows = [
       ["Metric", "Value"],
+      ["period_from", employmentReport.period?.from || "all"],
+      ["period_to", employmentReport.period?.to || "all"],
       ...Object.entries(employmentReport.metrics),
       ["participants_in_scope", employmentReport.privacy.participantCount],
       ["consented_participants", employmentReport.privacy.consentedParticipantCount],

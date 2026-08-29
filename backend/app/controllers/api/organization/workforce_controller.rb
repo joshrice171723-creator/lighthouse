@@ -88,6 +88,8 @@ class Api::Organization::WorkforceController < ApplicationController
       retentionCheckins: base.call(ParticipantRetentionCheckin).count,
       productActivities: base.call(ParticipantProductActivity).count
     }
+    consents = base.call(ParticipantConsent).where(status: "granted", revoked_at: nil)
+    consented_participant_count = consents.distinct.count(:participant_id)
     metrics = if suppressed
       nil
     else
@@ -96,7 +98,6 @@ class Api::Organization::WorkforceController < ApplicationController
       retentions = base.call(ParticipantRetentionCheckin)
       plans = base.call(ParticipantEmploymentPlan)
       enrollments = base.call(ParticipantProgramEnrollment)
-      consents = base.call(ParticipantConsent).where(status: "granted", revoked_at: nil)
       {
         enrolledParticipants: enrollments.distinct.count(:participant_id),
         employmentGoalsRecorded: plans.distinct.count(:participant_id),
@@ -123,7 +124,9 @@ class Api::Organization::WorkforceController < ApplicationController
         outcomeOrExit: participant_count - (placements.distinct.pluck(:participant_id) + enrollments.where.not(exit_date: nil).distinct.pluck(:participant_id)).uniq.length
       }
     end
-    render json: { empty: participant_count.zero?, period: { from: from&.iso8601, to: to&.iso8601 }, privacy: { participantCount: participant_count, suppressed: suppressed }, metrics: metrics, missingData: missing_data, report: suppressed ? nil : report, detail: nil }
+    privacy = { participantCount: participant_count, suppressed: suppressed }
+    privacy[:consentedParticipantCount] = consented_participant_count unless suppressed
+    render json: { empty: participant_count.zero?, period: { from: from&.iso8601, to: to&.iso8601 }, privacy: privacy, metrics: metrics, missingData: missing_data, report: suppressed ? nil : report, detail: nil }
   end
 
   def revoke_consent
