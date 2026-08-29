@@ -54,3 +54,24 @@ test('platform owner accounts are stored separately from partner memberships', (
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('participants can retrieve only their own uploaded resume bytes', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lighthouse-'));
+  const platform = createOrganizationPlatform({ databasePath: path.join(dir, 'platform.sqlite') });
+  try {
+    const organization = platform.createOrganization({ name: 'Harbor House' });
+    const owner = platform.addStaff({ organizationId: organization.id, email: 'owner@harbor.org', displayName: 'Owner', role: 'owner' });
+    const ownerSession = platform.createStaffSession({ membershipId: owner.id });
+    const location = platform.createLocation(ownerSession.token, { name: 'Main location' });
+    const invite = platform.createInvite(ownerSession.token, { email: 'josh@harbor.org', locationId: location.id });
+    const participantSession = platform.redeemInvite({ inviteToken: invite.inviteToken, email: 'josh@harbor.org', password: 'participant-pass-123' });
+    const uploaded = platform.uploadParticipantDocument(participantSession.token, { fileName: 'resume.pdf', mimeType: 'application/pdf', dataBase64: Buffer.from('resume bytes').toString('base64') });
+    const fetched = platform.getParticipantDocument(participantSession.token, uploaded.id);
+    assert.equal(fetched.fileName, 'resume.pdf');
+    assert.equal(Buffer.from(fetched.dataBase64, 'base64').toString(), 'resume bytes');
+    assert.throws(() => platform.getParticipantDocument(ownerSession.token, uploaded.id), /session is invalid or expired/);
+  } finally {
+    platform.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

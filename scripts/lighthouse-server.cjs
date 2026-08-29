@@ -34,6 +34,7 @@ const route = async (request, response) => {
       else if (action === 'invite/redeem') result = platform.redeemInvite(body);
       else if (action === 'participant/me') result = platform.participantFromSession(body);
       else if (action === 'participant/documents') result = platform.listParticipantDocuments(body);
+      else if (action === 'participant/documents/get') result = platform.getParticipantDocument(body.sessionToken, body.documentId);
       else if (action === 'participant/documents/upload') result = platform.uploadParticipantDocument(body.sessionToken, body.input || body);
       else if (action === 'extension/issue') result = platform.createExtensionLink(body);
       else if (action === 'extension/claim') result = platform.claimExtensionLink(body);
