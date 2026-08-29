@@ -92,7 +92,7 @@ const request = async (name, payload) => {
     result = raw ? JSON.parse(raw) : {};
   } catch {
     throw new Error(
-      `Organization API returned an unreadable response (${response.status}). Start the Lighthouse API server and try again.`,
+      `Organization API returned an unreadable response (${response.status}). Start the Next Step API server and try again.`,
     );
   }
   if (!response.ok)
@@ -796,7 +796,7 @@ function ParticipantPortal() {
                 <span className="step-rule" />
                 <span className="step-muted">2 You’re in</span>
               </div>
-              <p>Use the invite code your organization gave you to create your Lighthouse login.</p>
+              <p>Use the invite code your organization gave you to create your Next Step login.</p>
               <form className="lighthouse-form" onSubmit={redeem}>
                 <label>
                   Invite code
@@ -829,7 +829,7 @@ function ParticipantPortal() {
             </div>
             <div className="join-panel participant-login-panel">
               <div className="step-line"><span className="step-number">2</span><b>Already have an account?</b></div>
-              <p>Use the same Lighthouse login on this site and in ApplyPilot.</p>
+              <p>Use the same Next Step login on this site and in ApplyPilot.</p>
               {developerPath && <label className="dev-user-picker">Local test user<select defaultValue="" onChange={chooseDevUser}><option value="">Choose a seeded participant…</option>{devUsers.map((user) => <option key={user.email} value={user.email}>{user.label}</option>)}</select></label>}
               <form className="lighthouse-form" onSubmit={login}>
                 <label>Email<input required type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder="you@example.org" autoComplete="email" /></label>
