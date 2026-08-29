@@ -2,6 +2,8 @@ require "test_helper"
 require "digest"
 
 class WorkforcePilotTest < ActionDispatch::IntegrationTest
+  parallelize(workers: 1)
+
   def setup
     clean_test_database
 
