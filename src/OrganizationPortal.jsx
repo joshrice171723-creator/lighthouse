@@ -182,7 +182,7 @@ function PartnerSidebar({ account, onNavigate }) {
   const role = account?.membership?.role;
   const canManage = ["owner", "admin", "manager"].includes(role);
   return <aside className="partner-sidebar">
-    <div className="sidebar-brand"><div className="sidebar-mark">✦</div><div><b>North Star</b><span>Partner workspace</span></div></div>
+    <div className="sidebar-brand"><div className="sidebar-mark">✦</div><div><b>Next Step</b><span>Partner workspace</span></div></div>
     <nav className="partner-nav" aria-label="Partner workspace navigation">
       <button className="partner-nav-item active" onClick={() => onNavigate("overview")}><Home size={18} /> Overview</button>
       <div className="partner-nav-label">WORKSPACE</div>
