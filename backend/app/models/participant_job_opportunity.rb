@@ -1,0 +1,2 @@
+class ParticipantJobOpportunity < LighthouseRecord
+end

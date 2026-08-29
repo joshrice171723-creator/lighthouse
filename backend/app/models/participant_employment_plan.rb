@@ -1,0 +1,2 @@
+class ParticipantEmploymentPlan < LighthouseRecord
+end
