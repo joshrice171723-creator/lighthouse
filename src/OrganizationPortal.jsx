@@ -45,6 +45,8 @@ const routes = {
   organizationParticipantMe: "participant/me",
   organizationParticipantDocuments: "participant/documents",
   organizationUploadDocument: "participant/documents/upload",
+  organizationParticipantConsent: "participant/consent",
+  organizationParticipantConsentRevoke: "participant/consent/revoke",
   organizationIssueExtensionLink: "extension/issue",
   organizationDevelopmentSeed: "dev/seed",
   organizationCreateLocation: "location/create",
@@ -73,7 +75,7 @@ const railsApiOrigin =
   ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
     ? "http://127.0.0.1:3000"
     : "";
-const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "organizationParticipantJobs", "organizationParticipantJobsUpdate", "organizationParticipantDocuments", "organizationUploadDocument", "interview-prep/metrics", "employment-support/save", "employment-consent/revoke", "employment-report"]);
+const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "organizationParticipantJobs", "organizationParticipantJobsUpdate", "organizationParticipantDocuments", "organizationUploadDocument", "organizationParticipantConsent", "organizationParticipantConsentRevoke", "interview-prep/metrics", "employment-support/save", "employment-consent/revoke", "employment-report"]);
 const request = async (name, payload) => {
   if (window.desktopShell?.[name])
     return window.desktopShell[name](
@@ -210,6 +212,21 @@ function JobTrackerView({ session }) {
 }
 
 function BuildingIcon() { return <Building2 size={13} />; }
+
+function ParticipantPrivacyView({ consent, loading, onRevoke }) {
+  const granted = consent?.status === "granted";
+  return <section className="participant-privacy" aria-label="Privacy and consent">
+    <div className="participant-card privacy-consent-card">
+      <div className="connected-icon"><ShieldCheck size={20} /></div>
+      <span className="lighthouse-kicker">YOUR CONTROL</span>
+      <h2>Privacy & consent</h2>
+      <p>Employment-outcomes consent lets your organization include your progress in an aggregate workforce report. The report does not show your name, resume, applications, answers, messages, or interview notes.</p>
+      <div className={`consent-status ${granted ? "granted" : "revoked"}`} role="status"><span>{granted ? "●" : "○"}</span><b>{loading ? "Checking consent status…" : granted ? "Sharing is currently on" : "Sharing is currently off"}</b></div>
+      {consent?.version && <small>Consent version: {consent.version}</small>}
+      {granted ? <button className="outline-button" type="button" onClick={onRevoke}>Turn off aggregate reporting</button> : <p className="consent-recovery">Your organization can still support your private career workspace. If this status is unexpected, contact your support team.</p>}
+    </div>
+  </section>;
+}
 
 function PartnerSidebar({ account, onNavigate }) {
   const role = account?.membership?.role;
@@ -744,6 +761,8 @@ function ParticipantPortal() {
   const [profile, setProfile] = useState(null);
   const [link, setLink] = useState(null);
   const [documents, setDocuments] = useState([]);
+  const [consent, setConsent] = useState(null);
+  const [consentLoading, setConsentLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [activeView, setActiveView] = useState(() => readParticipantUiState(session, "activeView", "home"));
   const [documentTab, setDocumentTab] = useState(() => readParticipantUiState(session, "documentTab", "Resumes"));
@@ -763,6 +782,14 @@ function ParticipantPortal() {
         });
   }, [session]);
   useEffect(() => { if (session) request("organizationParticipantDocuments", session).then(setDocuments).catch(() => setDocuments([])); }, [session]);
+  const loadParticipantConsent = async () => {
+    if (!session) return;
+    setConsentLoading(true);
+    try { setConsent(await request("organizationParticipantConsent", session)); }
+    catch (error) { setMessage(error.message); }
+    finally { setConsentLoading(false); }
+  };
+  useEffect(() => { loadParticipantConsent(); }, [session]);
   const redeem = async (event) => {
     event.preventDefault();
     try {
@@ -799,6 +826,13 @@ function ParticipantPortal() {
     } catch (error) {
       setMessage(error.message);
     }
+  };
+  const revokeParticipantConsent = async () => {
+    if (!window.confirm("Turn off your consent for aggregate employment reporting?")) return;
+    setConsentLoading(true);
+    try { setConsent(await request("organizationParticipantConsentRevoke", session)); setMessage("Your aggregate reporting consent is now off."); }
+    catch (error) { setMessage(error.message); }
+    finally { setConsentLoading(false); }
   };
   const uploadDocument = async (event, documentType = "resume") => {
     const file = event.target.files?.[0]; if (!file) return;
@@ -949,6 +983,7 @@ function ParticipantPortal() {
     messages: { label: "Messages", title: "Messages", lede: "Stay connected with the staff supporting your goals." },
     profile: { label: "Profile", title: "Your profile", lede: "Review the information used to support your applications." },
     documents: { label: "Documents", title: "My Documents", lede: "Manage and tailor all of your job application documents here." },
+    privacy: { label: "Privacy & consent", title: "Your privacy choices", lede: "Review and control the employment-outcomes sharing connected to your workspace." },
   };
   const view = views[activeView];
   return (
@@ -963,6 +998,7 @@ function ParticipantPortal() {
             <button className={activeView === "interviews" ? "active" : ""} onClick={() => setActiveView("interviews")}><Check size={17} /> Interview prep</button>
             <button className={activeView === "messages" ? "active" : ""} onClick={() => setActiveView("messages")}><MessageCircle size={17} /> Messages</button>
             <button className={activeView === "documents" ? "active" : ""} onClick={() => setActiveView("documents")}><FileText size={17} /> Documents</button>
+            <button className={activeView === "privacy" ? "active" : ""} onClick={() => { setActiveView("privacy"); loadParticipantConsent(); }}><ShieldCheck size={17} /> Privacy & consent</button>
           </nav>
           <div className="participant-nav-bottom">
             <button className={activeView === "profile" ? "active" : ""} onClick={() => setActiveView("profile")}><UserRound size={17} /> Profile</button>
@@ -976,7 +1012,7 @@ function ParticipantPortal() {
           </div>
           <main className="lighthouse-content participant-content">
             <div className="participant-intro"><span className="lighthouse-kicker">{view.label.toUpperCase()}</span><h1>{view.title}</h1><p className="lighthouse-lede">{view.lede}</p></div>
-            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} documents={documents} onUpload={uploadDocument} /> : activeView === "applications" ? <JobTrackerView session={session} /> : activeView === "interviews" ? <InterviewPrepView session={session} profile={profile} onMessage={setMessage} /> : activeView === "home" ? <>
+            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} documents={documents} onUpload={uploadDocument} /> : activeView === "applications" ? <JobTrackerView session={session} /> : activeView === "interviews" ? <InterviewPrepView session={session} profile={profile} onMessage={setMessage} /> : activeView === "privacy" ? <ParticipantPrivacyView consent={consent} loading={consentLoading} onRevoke={revokeParticipantConsent} /> : activeView === "home" ? <>
               <div className="participant-stat-grid"><div><BriefcaseBusiness size={20} /><b>0</b><span>Saved opportunities</span></div><div><Clipboard size={20} /><b>0</b><span>Applications in progress</span></div><div><Check size={20} /><b>0</b><span>Interviews coming up</span></div></div>
               <div className="participant-card-grid"><section className="participant-card"><span className="lighthouse-kicker">NEXT STEP</span><h2>Save an opportunity to get started</h2><p>When a job is shared with you, save it here so you can open it later and work through the application at your pace.</p><button className="outline-button" onClick={() => setActiveView("saved")}>View saved opportunities <ArrowRight size={15} /></button></section><section className="participant-card"><span className="lighthouse-kicker">YOUR SUPPORT</span><h2>Need help with an application?</h2><p>Your staff can help you review an opportunity, prepare answers, and keep track of what is left to do.</p><button className="outline-button" onClick={() => setActiveView("messages")}>Open messages <ArrowRight size={15} /></button></section></div>
             </> : <section className="participant-empty"><div className="connected-icon">{activeView === "messages" ? <MessageCircle size={20} /> : <BriefcaseBusiness size={20} />}</div><h2>{activeView === "profile" ? profile.participant.displayName : `Nothing here yet`}</h2><p>{activeView === "saved" ? "Saved opportunities shared with you will appear here." : activeView === "applications" ? "Applications you begin will appear here with their next step." : activeView === "interviews" ? "Upcoming interviews and preparation notes will appear here." : activeView === "messages" ? "Messages from your support team will appear here." : `Connected to ${profile.organization.name}.`}</p></section>}
