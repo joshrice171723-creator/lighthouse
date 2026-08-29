@@ -1,0 +1,8 @@
+/config/master.key
+/config/credentials/*.key
+/log/*
+/tmp/*
+/storage/*
+!/log/.keep
+!/tmp/.keep
+!/storage/.keep
