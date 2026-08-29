@@ -147,6 +147,44 @@ const migrations = [
       `);
     },
   },
+  {
+    version: '20260828_interview_preparation',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS interview_prep_contexts (
+          id TEXT PRIMARY KEY, participant_id TEXT NOT NULL, organization_id TEXT NOT NULL,
+          employment_plan_id TEXT, job_opportunity_id TEXT, title TEXT NOT NULL,
+          visibility TEXT NOT NULL DEFAULT 'private', status TEXT NOT NULL DEFAULT 'active',
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+          FOREIGN KEY(participant_id) REFERENCES participant_profiles(id),
+          FOREIGN KEY(organization_id) REFERENCES organizations(id),
+          FOREIGN KEY(employment_plan_id) REFERENCES participant_employment_plans(id),
+          FOREIGN KEY(job_opportunity_id) REFERENCES participant_job_opportunities(id)
+        );
+        CREATE TABLE IF NOT EXISTS interview_prep_sessions (
+          id TEXT PRIMARY KEY, context_id TEXT NOT NULL, participant_id TEXT NOT NULL,
+          organization_id TEXT NOT NULL, session_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'started',
+          score_json TEXT NOT NULL DEFAULT '{}', started_at TEXT NOT NULL, completed_at TEXT,
+          FOREIGN KEY(context_id) REFERENCES interview_prep_contexts(id),
+          FOREIGN KEY(participant_id) REFERENCES participant_profiles(id),
+          FOREIGN KEY(organization_id) REFERENCES organizations(id)
+        );
+        CREATE TABLE IF NOT EXISTS interview_prep_results (
+          id TEXT PRIMARY KEY, session_id TEXT NOT NULL, context_id TEXT NOT NULL,
+          participant_id TEXT NOT NULL, organization_id TEXT NOT NULL, result_type TEXT NOT NULL,
+          item_key TEXT NOT NULL, score INTEGER NOT NULL DEFAULT 0, confidence INTEGER,
+          improvement_area TEXT, response_text TEXT, created_at TEXT NOT NULL,
+          FOREIGN KEY(session_id) REFERENCES interview_prep_sessions(id),
+          FOREIGN KEY(context_id) REFERENCES interview_prep_contexts(id),
+          FOREIGN KEY(participant_id) REFERENCES participant_profiles(id),
+          FOREIGN KEY(organization_id) REFERENCES organizations(id)
+        );
+        CREATE INDEX IF NOT EXISTS interview_contexts_scope_idx ON interview_prep_contexts(organization_id, participant_id, updated_at);
+        CREATE INDEX IF NOT EXISTS interview_sessions_reporting_idx ON interview_prep_sessions(organization_id, started_at, status);
+        CREATE INDEX IF NOT EXISTS interview_results_scope_idx ON interview_prep_results(organization_id, participant_id, result_type, created_at);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db, appliedAt) {

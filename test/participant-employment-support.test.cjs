@@ -11,11 +11,11 @@ test('employment-support migration creates the participant, outcome, and AI cost
   const databasePath = path.join(dir, 'platform.sqlite');
   const platform = createOrganizationPlatform({ databasePath });
   try {
-    assert.deepEqual(platform.migrationStatus().map((entry) => entry.version), ['20260828_participant_employment_support']);
+    assert.deepEqual(platform.migrationStatus().map((entry) => entry.version), ['20260828_participant_employment_support', '20260828_interview_preparation']);
     platform.close();
     const secondStartup = createOrganizationPlatform({ databasePath });
     try {
-      assert.equal(secondStartup.migrationStatus().length, 1);
+      assert.equal(secondStartup.migrationStatus().length, 2);
     } finally {
       secondStartup.close();
     }

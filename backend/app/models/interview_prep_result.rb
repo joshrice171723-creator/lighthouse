@@ -1,0 +1,2 @@
+class InterviewPrepResult < LighthouseRecord
+end

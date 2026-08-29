@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Archive,
   BarChart3,
+  Award,
   BriefcaseBusiness,
   Building2,
   Check,
@@ -26,10 +27,13 @@ import {
   RefreshCw,
   ShieldCheck,
   SlidersHorizontal,
+  Timer,
+  Target,
   UserRound,
   Users,
 } from "lucide-react";
 import "./organization.css";
+import "./interview-prep.css";
 
 const routes = {
   organizationBootstrap: "bootstrap",
@@ -51,12 +55,20 @@ const routes = {
   organizationStaffAccount: "staff/account",
   organizationLogin: "login",
   organizationParticipantLogin: "participant/login",
+  organizationParticipantInterviewPrep: "participant/interview-prep",
+  organizationParticipantInterviewPrepSave: "participant/interview-prep/save",
 };
 const apiOrigin =
   import.meta.env.DEV &&
   ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
     ? "http://127.0.0.1:8787"
     : "";
+const railsApiOrigin =
+  import.meta.env.DEV &&
+  ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+    ? "http://127.0.0.1:3000"
+    : "";
+const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "interview-prep/metrics"]);
 const request = async (name, payload) => {
   if (window.desktopShell?.[name])
     return window.desktopShell[name](
@@ -65,8 +77,9 @@ const request = async (name, payload) => {
   const body = Array.isArray(payload)
     ? { sessionToken: payload[0], input: payload[1] }
     : (payload ?? {});
+  const backendOrigin = railsRoutes.has(name) ? railsApiOrigin : apiOrigin;
   const response = await fetch(
-    `${apiOrigin}/api/organization/${routes[name] || name}`,
+    `${backendOrigin}/api/organization/${routes[name] || name}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -106,7 +119,7 @@ function Brand({ partner = false }) {
         ✦
       </div>
       <div>
-        <b>{partner ? "North Star" : "Lighthouse Jobs"}</b>
+        <b>Next Step</b>
         <span>{partner ? "Partner workspace" : "Participant workspace"}</span>
       </div>
     </div>
@@ -224,6 +237,7 @@ export function StaffPortal() {
   const [participants, setParticipants] = useState([]);
   const [locations, setLocations] = useState([]);
   const [resumeCount, setResumeCount] = useState(0);
+  const [prepMetrics, setPrepMetrics] = useState(null);
   const [locationName, setLocationName] = useState("");
   const [staffForm, setStaffForm] = useState({
     email: "",
@@ -254,6 +268,7 @@ export function StaffPortal() {
       setParticipants(await request("organizationListParticipants", session));
       setLocations(await request("organizationListLocations", session));
       setResumeCount((await request("organizationResumeCount", session)).count);
+      if (["owner", "admin", "manager"].includes(account?.membership?.role || role)) setPrepMetrics(await request("interview-prep/metrics", { sessionToken: session }));
     } catch (error) {
       setMessage(error.message);
     }
@@ -460,6 +475,7 @@ export function StaffPortal() {
             {staffView ? <><div><Check size={20} /><b>{onboardedCount}</b><span>People onboarded</span></div><div><FileText size={20} /><b>{resumeCount}</b><span>Resumes uploaded</span></div></> : <><div><Building2 size={20} /><b>{dashboard?.locations?.length || locations.length}</b><span>Locations</span></div><div><FileText size={20} /><b>{resumeCount}</b><span>Resumes uploaded</span></div></>}
           </div>
         </section>
+        {canManageStaff && ["owner", "admin", "manager"].includes(role) && <section id="lighthouse-interview-metrics" className="snapshot-section prep-metrics"><div className="section-title"><div><span className="lighthouse-kicker">EMPLOYMENT SUPPORT</span><h2>Interview Prep engagement</h2></div><span className="muted-label">Aggregate only · minimum cohort 5</span></div>{prepMetrics?.suppressed ? <div className="empty-state"><ShieldCheck size={24} /><b>Metrics are hidden for privacy</b><span>At least five participants must have started preparation before aggregate results are shown.</span></div> : <div className="snapshot-grid"><div><Target size={20} /><b>{prepMetrics?.metrics?.startedParticipants || 0}</b><span>Participants started</span></div><div><Check size={20} /><b>{prepMetrics?.metrics?.sessionsCompleted || 0}</b><span>Sessions completed</span></div><div><BarChart3 size={20} /><b>{prepMetrics?.metrics?.completionRate || 0}%</b><span>Completion rate</span></div><div><Award size={20} /><b>{prepMetrics?.metrics?.averageRubricScore == null ? "—" : `${prepMetrics.metrics.averageRubricScore}/100`}</b><span>Average delivery rubric</span></div></div>}</section>}
         <section id="lighthouse-invite" className="invite-hero">
           <div><span className="lighthouse-kicker">NEXT STEP</span><h2>Invite a participant</h2><p>Send a secure, single-use invitation. You only need their email address.</p></div>
           <form className="invite-form" onSubmit={createInvite}><label className="sr-only" htmlFor="participant-email">Participant email</label><input id="participant-email" required type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="participant@example.org" /><button className="lighthouse-primary" type="submit">Create invite <ArrowRight size={16} /></button></form>
@@ -600,6 +616,28 @@ function DocumentsView({ tab, setTab, search, setSearch, documents = [], onUploa
     <div className="document-toolbar"><span>0 selected <button type="button" className="document-delete" disabled>Delete</button></span><div><label className="document-upload"><Upload size={15} /> Upload<input className="sr-only" type="file" accept=".pdf,.doc,.docx" onChange={(event) => onUpload(event, documentType)} /></label><select aria-label="Document filter"><option>All</option></select><label className="document-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></label></div></div>
     <div className="document-table"><div className="document-table-head"><span></span><b>{tab.slice(0, -1).toUpperCase()} NAME</b><b>CREATED</b><b>LAST EDITED</b><b>ACTIONS</b></div>{visibleRows.length ? visibleRows.map((row) => <div className="document-row" key={row.id || row.name}><input type="checkbox" aria-label={`Select ${row.name}`} /><div className="document-name-cell"><span className="document-file-icon"><FileText size={18} /></span><div><b>{row.name}</b><small><em>Uploaded</em><em>{row.type}</em><em>{row.detail}</em></small></div></div><span>{row.created}</span><span>{row.edited}</span><button type="button" className="document-more">Edit&nbsp;&nbsp; More⌄</button></div>) : <div className="document-empty">No {tab.toLowerCase()} yet.</div>}</div>
   </div>;
+}
+
+const prepQuestions = [
+  { key: "strength", prompt: "What is one strength you would bring to this job?", answer: "A specific strength, a short example, and how it helps in this role." },
+  { key: "challenge", prompt: "Tell me about a challenge you handled.", answer: "Use a clear situation, action, and result. Keep the example work-focused." },
+  { key: "why", prompt: "Why are you interested in this opportunity?", answer: "Connect the employer or role to your goals and one relevant skill." },
+];
+const rubricScore = (response) => {
+  const text = String(response || "").trim(); if (!text) return { overall: 0, clarity: 0, relevance: 0, structure: 0 };
+  const words = text.split(/\s+/).length; const structure = /\b(situation|task|action|result|because|then|finally)\b/i.test(text) ? 85 : words > 25 ? 65 : 45; const relevance = words > 18 ? 80 : 55; const clarity = words <= 100 ? 85 : 65; return { overall: Math.round((structure + relevance + clarity) / 3), clarity, relevance, structure };
+};
+function InterviewPrepView({ session, profile, onMessage }) {
+  const [data, setData] = useState(null); const [context, setContext] = useState(null); const [mode, setMode] = useState("hub"); const [questionIndex, setQuestionIndex] = useState(0); const [response, setResponse] = useState(""); const [confidence, setConfidence] = useState(3); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
+  const load = async () => { setLoading(true); try { const result = await request("organizationParticipantInterviewPrep", session); setData(result); setContext(result.contexts[0] || null); } catch (error) { onMessage(error.message); } finally { setLoading(false); } };
+  useEffect(() => { load(); }, [session]);
+  const ensureContext = async () => { if (context) return context; const result = await request("organizationParticipantInterviewPrepSave", [session, { title: "My interview preparation", sessionType: "simulation", status: "started" }]); await load(); return { id: result.contextId, title: "My interview preparation" }; };
+  const saveResult = async (type, itemKey, result) => { setSaving(true); try { const current = await ensureContext(); await request("organizationParticipantInterviewPrepSave", [session, { contextId: current.id, title: current.title, sessionType: type, status: "completed", score: result, results: [{ resultType: type, itemKey, score: result.overall ?? result.score ?? 0, confidence, improvementArea: result.overall < 70 ? "Add a concrete example" : "Keep practicing concise delivery", responseText: type === "simulation" ? response : "" }] }]); await load(); onMessage("Progress saved to your private preparation history."); } catch (error) { onMessage(error.message); } finally { setSaving(false); } };
+  if (loading) return <section className="prep-panel" aria-live="polite"><p>Loading your private preparation space…</p></section>;
+  const question = prepQuestions[questionIndex]; const latest = data?.sessions?.[0];
+  if (mode === "hub") return <div className="prep-layout"><section className="prep-panel prep-hero"><div><span className="lighthouse-kicker">PRACTICE WITH PURPOSE</span><h2>Build confidence for your next conversation.</h2><p>Practice answers, get clear feedback, and return when you are ready. Your responses and scores are private to you.</p></div><div className="prep-score"><Award size={20} /><b>{latest?.score?.overall || 0}</b><small>latest rubric score</small></div></section><div className="prep-card-grid"><button className="prep-card" onClick={() => setMode("simulation")}><Timer size={20} /><b>Timed interview simulation</b><span>Three common questions with explainable delivery feedback.</span><strong>Start simulation <ArrowRight size={14} /></strong></button><button className="prep-card" onClick={() => setMode("questions")}><Target size={20} /><b>Knowledge questions</b><span>Multiple-choice practice with explanations after each answer.</span><strong>Practice questions <ArrowRight size={14} /></strong></button><button className="prep-card" onClick={() => setMode("flashcards")}><RefreshCw size={20} /><b>Flashcards and drills</b><span>Review fundamentals, confidence, and your practice streak.</span><strong>Review fundamentals <ArrowRight size={14} /></strong></button></div><section className="prep-panel"><div className="section-title"><div><span className="lighthouse-kicker">YOUR HISTORY</span><h2>Private progress</h2></div><span className="muted-label">{data?.sessions?.length || 0} sessions</span></div>{data?.sessions?.length ? <div className="prep-history">{data.sessions.slice(0, 5).map((item) => <div key={item.id}><span>{item.sessionType}</span><b>{item.score?.overall || 0}/100</b><small>{new Date(item.startedAt).toLocaleDateString()}</small></div>)}</div> : <p className="muted-copy">Complete a practice activity to start your history.</p>}</section></div>;
+  if (mode === "flashcards") return <section className="prep-panel prep-activity"><span className="lighthouse-kicker">FUNDAMENTALS</span><h2>Interview delivery essentials</h2><p>Use a brief example, connect it to the role, and finish with the result.</p><div className="prep-tip"><b>Confidence check</b><span>How confident do you feel explaining this today?</span><div className="confidence-row">{[1, 2, 3, 4, 5].map((value) => <button key={value} className={confidence === value ? "selected" : ""} onClick={() => setConfidence(value)} aria-label={`${value} out of 5 confidence`}>{value}</button>)}</div></div><button className="lighthouse-primary" disabled={saving} onClick={() => saveResult("drill", "fundamentals", { overall: confidence * 20, score: confidence * 20 })}>Save practice <Check size={16} /></button><button className="text-button" onClick={() => setMode("hub")}>Back to preparation</button></section>;
+  return <section className="prep-panel prep-activity"><span className="lighthouse-kicker">{mode === "simulation" ? `SIMULATION · QUESTION ${questionIndex + 1} OF ${prepQuestions.length}` : "KNOWLEDGE CHECK"}</span><h2>{question.prompt}</h2><p className="prep-explanation">{mode === "questions" ? "Choose the strongest approach, then review why." : "Type a short answer. Lighthouse uses a deterministic rubric for structure, relevance, and clarity."}</p>{mode === "questions" ? <div className="answer-options">{[question.answer, "Give a one-word answer.", "Talk about private medical information."].map((option) => <button key={option} onClick={() => { const score = option === question.answer ? { overall: 100, score: 100 } : { overall: 35, score: 35 }; saveResult("questions", question.key, score); }}>{option}</button>)}</div> : <textarea value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Type your answer here…" aria-label="Interview answer" rows={7} />}{mode === "simulation" && <div className="prep-actions"><button className="lighthouse-primary" disabled={!response.trim() || saving} onClick={() => { const score = rubricScore(response); saveResult("simulation", question.key, score); setResponse(""); setQuestionIndex((index) => (index + 1) % prepQuestions.length); }}>Save answer and continue <ArrowRight size={15} /></button><button className="text-button" onClick={() => setMode("hub")}>Exit simulation</button></div>}<div className="prep-privacy"><ShieldCheck size={15} /> Private to {profile.participant.displayName}. No recordings or AI processing are used.</div></section>;
 }
 
 function ParticipantPortal() {
@@ -857,7 +895,7 @@ function ParticipantPortal() {
           </div>
           <main className="lighthouse-content participant-content">
             <div className="participant-intro"><span className="lighthouse-kicker">{view.label.toUpperCase()}</span><h1>{view.title}</h1><p className="lighthouse-lede">{view.lede}</p></div>
-            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} documents={documents} onUpload={uploadDocument} /> : activeView === "applications" ? <JobTrackerView /> : activeView === "home" ? <>
+            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} documents={documents} onUpload={uploadDocument} /> : activeView === "applications" ? <JobTrackerView /> : activeView === "interviews" ? <InterviewPrepView session={session} profile={profile} onMessage={setMessage} /> : activeView === "home" ? <>
               <div className="participant-stat-grid"><div><BriefcaseBusiness size={20} /><b>0</b><span>Saved opportunities</span></div><div><Clipboard size={20} /><b>0</b><span>Applications in progress</span></div><div><Check size={20} /><b>0</b><span>Interviews coming up</span></div></div>
               <div className="participant-card-grid"><section className="participant-card"><span className="lighthouse-kicker">NEXT STEP</span><h2>Save an opportunity to get started</h2><p>When a job is shared with you, save it here so you can open it later and work through the application at your pace.</p><button className="outline-button" onClick={() => setActiveView("saved")}>View saved opportunities <ArrowRight size={15} /></button></section><section className="participant-card"><span className="lighthouse-kicker">YOUR SUPPORT</span><h2>Need help with an application?</h2><p>Your staff can help you review an opportunity, prepare answers, and keep track of what is left to do.</p><button className="outline-button" onClick={() => setActiveView("messages")}>Open messages <ArrowRight size={15} /></button></section></div>
             </> : <section className="participant-empty"><div className="connected-icon">{activeView === "messages" ? <MessageCircle size={20} /> : <BriefcaseBusiness size={20} />}</div><h2>{activeView === "profile" ? profile.participant.displayName : `Nothing here yet`}</h2><p>{activeView === "saved" ? "Saved opportunities shared with you will appear here." : activeView === "applications" ? "Applications you begin will appear here with their next step." : activeView === "interviews" ? "Upcoming interviews and preparation notes will appear here." : activeView === "messages" ? "Messages from your support team will appear here." : `Connected to ${profile.organization.name}.`}</p></section>}

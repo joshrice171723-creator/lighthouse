@@ -1,0 +1,2 @@
+class InterviewPrepContext < LighthouseRecord
+end

@@ -33,6 +33,9 @@ const route = async (request, response) => {
       else if (action === 'invite/create') result = platform.createInvite(body.sessionToken, body.input || body);
       else if (action === 'invite/redeem') result = platform.redeemInvite(body);
       else if (action === 'participant/me') result = platform.participantFromSession(body);
+      else if (action === 'participant/interview-prep') result = platform.listInterviewPrep(body);
+      else if (action === 'participant/interview-prep/save') result = platform.saveInterviewPrep(body.sessionToken, body.input || body);
+      else if (action === 'interview-prep/metrics') result = platform.interviewPrepMetrics(body.sessionToken || body, body.input || {});
       else if (action === 'participant/documents') result = platform.listParticipantDocuments(body);
       else if (action === 'participant/documents/get') result = platform.getParticipantDocument(body.sessionToken, body.documentId);
       else if (action === 'participant/documents/upload') result = platform.uploadParticipantDocument(body.sessionToken, body.input || body);
