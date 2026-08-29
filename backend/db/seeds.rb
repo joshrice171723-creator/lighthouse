@@ -46,6 +46,31 @@ consent.save!
   synthetic_consent.save!
 end
 
+demo_participants = ParticipantProfile.where(organization_id: organization.id, status: "active").order(:id).to_a
+demo_participants.each_with_index do |demo_participant, index|
+  plan = ParticipantEmploymentPlan.find_or_initialize_by(id: "demo-employment-plan-#{index + 1}")
+  plan.assign_attributes(participant_id: demo_participant.id, organization_id: organization.id, goal: "Secure a stable workforce role", target_job_title: index.even? ? "Customer Success Specialist" : "Workforce Program Coordinator", target_industry: "Workforce services", action_steps: ["Complete application practice", "Review interview preparation"], review_date: Date.new(2026, 9, 15), status: "active", created_by_membership_id: staff.id)
+  plan.save!
+
+  service = ParticipantServiceRecord.find_or_initialize_by(id: "demo-service-#{index + 1}")
+  service.assign_attributes(participant_id: demo_participant.id, organization_id: organization.id, service_type: "Job-search coaching", service_date: Time.zone.local(2026, 8, 15), duration_minutes: 45, completion_status: "completed", provider_membership_id: staff.id, outcome_summary: "Synthetic coaching session completed")
+  service.save!
+
+  activity = ParticipantJobActivity.find_or_initialize_by(id: "demo-job-activity-#{index + 1}")
+  activity.assign_attributes(participant_id: demo_participant.id, organization_id: organization.id, job_opportunity_id: demo_participant.id == participant.id ? "demo-job-1" : nil, activity_type: "application_review", activity_date: Time.zone.local(2026, 8, 16), status: "completed", staff_membership_id: staff.id, participant_reported: false, notes: "Synthetic application activity")
+  activity.save!
+end
+
+demo_participants.first(3).each_with_index do |demo_participant, index|
+  placement = ParticipantJobPlacement.find_or_initialize_by(id: "demo-placement-#{index + 1}")
+  placement.assign_attributes(participant_id: demo_participant.id, organization_id: organization.id, employer_name: "Synthetic Workforce Employer #{index + 1}", job_title: "Workforce Support Specialist", start_date: Date.new(2026, 7, 1), hourly_wage: 18.50, hours_per_week: 32, employment_type: "Full-time", verification_method: "synthetic_staff_record", verified_at: now, verified_by_membership_id: staff.id, status: "active")
+  placement.save!
+
+  retention = ParticipantRetentionCheckin.find_or_initialize_by(id: "demo-retention-#{index + 1}")
+  retention.assign_attributes(participant_id: demo_participant.id, organization_id: organization.id, job_placement_id: placement.id, checkin_date: Date.new(2026, 7, 31), days_since_start: 30, still_employed: true, hours_per_week: 32, wage_changed: false, support_provided: "Synthetic retention check-in", participant_reported: false, next_checkin_date: Date.new(2026, 9, 29))
+  retention.save!
+end
+
 [
   ["demo-job-1", "Customer Success Specialist", "Acme Support", "Remote · United States", "saved"],
   ["demo-job-2", "Workforce Program Coordinator", "Community Pathways", "Oklahoma City, OK", "applied"]

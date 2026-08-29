@@ -45,5 +45,8 @@ test("Rails demo seed stays synthetic and repeatable", () => {
   assert.match(source, /demo-participant-session/);
   assert.match(source, /demo-participant-#{number}/);
   assert.match(source, /Synthetic Participant #{number}/);
+  assert.match(source, /demo-employment-plan-#{index \+ 1}/);
+  assert.match(source, /demo-placement-#{index \+ 1}/);
+  assert.match(source, /demo-retention-#{index \+ 1}/);
   assert.match(source, /robins-house\.test/);
 });
