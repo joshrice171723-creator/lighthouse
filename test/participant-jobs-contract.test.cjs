@@ -13,11 +13,14 @@ test("participant jobs API stays participant and tenant scoped", () => {
   assert.match(source, /STATUSES = %w\[saved in_progress applied interviewing offer rejected withdrawn archived\]/);
   assert.match(source, /application_started_at/);
   assert.match(source, /def review/);
+  assert.match(source, /def review_state/);
+  assert.match(source, /review_state/);
   assert.match(source, /application_review_started_at/);
   assert.match(source, /applicationReviewStartedAt: job\.application_review_started_at/);
   assert.match(source, /application_review_started_at: job\.application_review_started_at \|\| Time\.current/);
   assert.match(source, /job\.update!\(application_review_started_at:/);
   assert.match(source, /applicationStartedAt: job\.application_started_at/);
+  assert.match(source, /applicationReviewStartedAt: job\.application_review_started_at/);
   assert.match(migration, /add_column :participant_job_opportunities, :application_started_at, :datetime/);
   assert.match(source, /where\(id: job_id, participant_id: participant\.id, organization_id: participant\.organization_id\)/);
   assert.match(source, /application_url = if job\.source == "synthetic-local-demo"/);
@@ -38,6 +41,7 @@ test("participant tracker is wired to the Rails jobs routes", () => {
   assert.match(source, /status: "in_progress"/);
   assert.match(source, /Open synthetic application/);
   assert.match(source, /Application link unavailable/);
+  assert.match(source, /Application checkpoint saved/);
 });
 
 test("participant document catalog is Rails-authoritative and metadata-only", () => {

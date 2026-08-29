@@ -42,6 +42,17 @@ class Api::Organization::ParticipantJobsController < ApplicationController
     render json: { job: job_json(job) }
   end
 
+  def review_state
+    participant = participant_from_session
+    return unless participant
+
+    job_id = params[:jobId].presence || params.dig(:input, :jobId)
+    job = ParticipantJobOpportunity.where(id: job_id, participant_id: participant.id, organization_id: participant.organization_id).first
+    return render(json: { error: "Opportunity not found." }, status: :not_found) unless job
+
+    render json: { job: job_json(job) }
+  end
+
   private
 
   def participant_from_session
