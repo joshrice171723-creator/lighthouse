@@ -14,6 +14,7 @@ assert.match(controller, /subject_type: "participant"/);
 assert.match(controller, /organization_id: session\.organization_id/);
 assert.match(model, /STATUSES = %w\[created failed\]/);
 assert.match(controller, /site_key.*status/);
+assert.match(controller, /a-z0-9\._:\\\/-/);
 assert.match(migration, /organization_id.*participant_id.*site_key/);
 assert.match(migration, /unique: true/);
 assert.match(extension, /APPLYPILOT_RECORD_SYNTHETIC_ACCOUNT/);
