@@ -69,7 +69,13 @@ class Api::Organization::WorkforceController < ApplicationController
     participant_ids = participant_scope.select(:id)
     participant_count = participant_scope.count
     suppressed = participant_count.positive? && participant_count < 5
-    base = ->(model) { model.where(organization_id: staff_session.organization_id, participant_id: participant_ids) }
+    from = parse_report_date(params[:from])
+    to = parse_report_date(params[:to])
+    date_range = from && to && from <= to ? (from.beginning_of_day..to.end_of_day) : nil
+    base = ->(model) {
+      relation = model.where(organization_id: staff_session.organization_id, participant_id: participant_ids)
+      date_range ? relation.where(created_at: date_range) : relation
+    }
     report = {
       organizationId: staff_session.organization_id,
       locationId: membership.location_id,
@@ -117,7 +123,7 @@ class Api::Organization::WorkforceController < ApplicationController
         outcomeOrExit: participant_count - (placements.distinct.pluck(:participant_id) + enrollments.where.not(exit_date: nil).distinct.pluck(:participant_id)).uniq.length
       }
     end
-    render json: { empty: participant_count.zero?, privacy: { participantCount: participant_count, suppressed: suppressed }, metrics: metrics, missingData: missing_data, report: suppressed ? nil : report, detail: nil }
+    render json: { empty: participant_count.zero?, period: { from: from&.iso8601, to: to&.iso8601 }, privacy: { participantCount: participant_count, suppressed: suppressed }, metrics: metrics, missingData: missing_data, report: suppressed ? nil : report, detail: nil }
   end
 
   def revoke_consent
@@ -135,6 +141,12 @@ class Api::Organization::WorkforceController < ApplicationController
     consents = ParticipantConsent.where(participant_id: participant.id, organization_id: staff_session.organization_id, status: "granted", revoked_at: nil)
     revoked = consents.update_all(status: "revoked", revoked_at: Time.current, updated_at: Time.current)
     render json: { participantId: participant.id, organizationId: staff_session.organization_id, revokedCount: revoked }
+  end
+
+  def parse_report_date(value)
+    Date.iso8601(value.to_s)
+  rescue ArgumentError
+    nil
   end
 
   private

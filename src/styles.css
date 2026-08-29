@@ -158,3 +158,4 @@ body{overflow-x:hidden}
 .autonomous-unknown-question{display:none}
 .crumb .breadcrumb-link{padding:0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}.crumb .breadcrumb-link:hover,.crumb .breadcrumb-link:focus-visible{color:var(--text);text-decoration:underline}.crumb .breadcrumb-link.current{color:var(--text)}
 .section-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.report-period{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:12px 0}.report-period label{display:grid;gap:4px;color:var(--muted);font-size:10px}.report-period input{padding:7px 9px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--text);font:inherit}
