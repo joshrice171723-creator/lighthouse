@@ -57,6 +57,8 @@ const routes = {
   organizationParticipantLogin: "participant/login",
   organizationParticipantInterviewPrep: "participant/interview-prep",
   organizationParticipantInterviewPrepSave: "participant/interview-prep/save",
+  organizationParticipantJobs: "participant/jobs",
+  organizationParticipantJobsUpdate: "participant/jobs/update",
   "employment-support/save": "workforce/records",
   "employment-consent/revoke": "workforce/consent/revoke",
   "employment-report": "workforce/report",
@@ -71,7 +73,7 @@ const railsApiOrigin =
   ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
     ? "http://127.0.0.1:3000"
     : "";
-const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "interview-prep/metrics", "employment-support/save", "employment-consent/revoke", "employment-report"]);
+const railsRoutes = new Set(["organizationParticipantInterviewPrep", "organizationParticipantInterviewPrepSave", "organizationParticipantJobs", "organizationParticipantJobsUpdate", "interview-prep/metrics", "employment-support/save", "employment-consent/revoke", "employment-report"]);
 const request = async (name, payload) => {
   if (window.desktopShell?.[name])
     return window.desktopShell[name](
@@ -153,8 +155,9 @@ const trackerSeed = [
   { id: 7, title: "Full Stack Engineer", company: "Ciridae", location: "San Francisco, CA, USA +1 more", status: "Applied", color: "black", icon: BarChart3 },
 ];
 
-function JobTrackerView() {
+function JobTrackerView({ session }) {
   const [jobs, setJobs] = useState(trackerSeed);
+  const [syncState, setSyncState] = useState("Loading private opportunities…");
   const [tab, setTab] = useState("Active");
   const [query, setQuery] = useState("");
   const [showColumns, setShowColumns] = useState(false);
@@ -166,16 +169,30 @@ function JobTrackerView() {
   const archiveAll = () => setJobs((current) => current.map((job) => ({ ...job, status: "Archived" })));
   const addApplication = () => setJobs((current) => [...current, { id: Date.now(), title: "New application", company: "Add company details", location: "", status: "Saved", color: "cyan", icon: BriefcaseBusiness }]);
   const toggleColumn = (column) => setVisible((current) => ({ ...current, [column]: !current[column] }));
+  useEffect(() => {
+    if (!session) return;
+    request("organizationParticipantJobs", [session, {}]).then((result) => {
+      const remote = (result.jobs || []).map((job, index) => ({ ...job, color: ["blue", "mint", "cyan", "teal"][index % 4], icon: BriefcaseBusiness, status: job.status === "interviewing" ? "Interviewing" : job.status.charAt(0).toUpperCase() + job.status.slice(1) }));
+      setJobs(remote.length ? remote : trackerSeed);
+      setSyncState(remote.length ? "Synced to your private workspace" : "No saved opportunities yet · showing demo examples");
+    }).catch(() => setSyncState("Offline demo mode · changes stay on this page"));
+  }, [session]);
+  const advanceJob = async (job) => {
+    const next = { Saved: "applied", Applied: "interviewing", Interviewing: "offer", Offer: "archived" }[job.status];
+    if (!next || !job.id || typeof job.id !== "string") return;
+    setJobs((current) => current.map((item) => item.id === job.id ? { ...item, status: next === "interviewing" ? "Interviewing" : next.charAt(0).toUpperCase() + next.slice(1) } : item));
+    try { await request("organizationParticipantJobsUpdate", [session, { jobId: job.id, status: next }]); setSyncState("Opportunity updated"); } catch (error) { setSyncState(error.message); }
+  };
 
   return <section className="job-tracker" aria-label="Job tracker">
     <div className="tracker-heading">
       <div><h2>Your Job Tracker</h2><div className="tracker-tabs"><button className={tab === "Active" ? "active" : ""} onClick={() => setTab("Active")}>{jobs.filter((job) => job.status !== "Archived").length} <span>TOTAL JOBS</span></button><button className={tab === "Active" ? "active" : ""} onClick={() => setTab("Active")}>Active</button><button className={tab === "Archived" ? "active" : ""} onClick={() => setTab("Archived")}>Archived</button><button onClick={() => setShowFilters(true)}><SlidersHorizontal size={15} /> Partners</button></div></div>
       <div className="tracker-actions"><button className="tracker-outline selected"><Clipboard size={15} /> Tracked Jobs</button><button className="tracker-outline"><BarChart3 size={15} /> Flow Chart</button><button className="tracker-outline" onClick={() => setJobs((current) => current)}><Download size={15} /> Export CSV</button><button className="tracker-outline"><Download size={15} /> Import CSV</button><button className="tracker-primary" onClick={addApplication}>＋ Add Application</button></div>
     </div>
-    <div className="tracker-toolbar"><label className="tracker-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for roles or companies" /></label><button className="tracker-select">Applied from <ChevronRight size={16} /> Applied until</button><button className="tracker-select">Job Type <ChevronDown size={16} /></button><button className="tracker-select">Status <ChevronDown size={16} /></button><button className={`tracker-filter ${showFilters ? "active" : ""}`} onClick={() => setShowFilters((current) => !current)}><Filter size={16} /></button></div>
+    <div className="tracker-toolbar"><label className="tracker-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for roles or companies" /></label><button className="tracker-select">Applied from <ChevronRight size={16} /> Applied until</button><button className="tracker-select">Job Type <ChevronDown size={16} /></button><button className="tracker-select">Status <ChevronDown size={16} /></button><button className={`tracker-filter ${showFilters ? "active" : ""}`} onClick={() => setShowFilters((current) => !current)}><Filter size={16} /></button></div><p className="tracker-sync-state" role="status">{syncState}</p>
     <div className="tracker-bulk"><span>☑ <b>Manage Jobs</b></span><i /><button onClick={archiveAll}><Archive size={14} /> Archive all</button><div className="tracker-column-wrap"><button onClick={() => setShowColumns((current) => !current)}><b>Visible Columns (5)</b> <ChevronDown size={15} /></button>{showColumns && <div className="tracker-columns-menu">{Object.entries(visible).map(([column, checked]) => <label key={column}><input type="checkbox" checked={checked} onChange={() => toggleColumn(column)} /><span>{column}</span><b>({counts[column] ?? 0})</b></label>)}</div>}</div><span className="tracker-view-label"><Columns3 size={15} /> Columns <b>/</b> ▤ List</span></div>
     {showFilters && <div className="tracker-filter-note"><b>Quick filters</b><button onClick={() => setQuery("remote")}>Remote roles</button><button onClick={() => setQuery("engineer")}>Engineering</button><button onClick={() => { setQuery(""); setShowFilters(false); }}>Clear filters</button></div>}
-    <div className="tracker-board">{columns.filter((column) => visible[column]).map((column) => <div className="tracker-column" key={column}><div className="tracker-column-title"><span>⌁</span><b>{column.toUpperCase()}</b><em>({counts[column]})</em></div><div className="tracker-cards">{filtered.filter((job) => job.status === column).map((job) => <article className="tracker-card" key={job.id}><div className={`tracker-logo ${job.color}`}>{React.createElement(job.icon, { size: 22 })}</div><div className="tracker-card-copy"><div className="tracker-card-title"><b>{job.title}</b><button aria-label={`Favorite ${job.title}`}><Heart size={18} /></button></div><span><BuildingIcon /> {job.company}</span>{job.location && <span><MapPin size={13} /> {job.location}</span>}</div><button className="tracker-more" aria-label="More actions"><MoreHorizontal size={17} /></button></article>)}{counts[column] === 0 && <div className="tracker-empty">No jobs here yet</div>}</div></div>)}</div>
+    <div className="tracker-board">{columns.filter((column) => visible[column]).map((column) => <div className="tracker-column" key={column}><div className="tracker-column-title"><span>⌁</span><b>{column.toUpperCase()}</b><em>({counts[column]})</em></div><div className="tracker-cards">{filtered.filter((job) => job.status === column).map((job) => <article className="tracker-card" key={job.id}><div className={`tracker-logo ${job.color}`}>{React.createElement(job.icon, { size: 22 })}</div><div className="tracker-card-copy"><div className="tracker-card-title"><b>{job.title}</b><button aria-label={`Favorite ${job.title}`}><Heart size={18} /></button></div><span><BuildingIcon /> {job.company}</span>{job.location && <span><MapPin size={13} /> {job.location}</span>}<button className="text-button" type="button" onClick={() => advanceJob(job)}>{job.status === "Offer" ? "Archive opportunity" : `Move to ${({ Saved: "Applied", Applied: "Interviewing", Interviewing: "Offer" }[job.status] || "next step")}`}</button></div><button className="tracker-more" aria-label="More actions"><MoreHorizontal size={17} /></button></article>)}{counts[column] === 0 && <div className="tracker-empty">No jobs here yet</div>}</div></div>)}</div>
   </section>;
 }
 
@@ -919,7 +936,7 @@ function ParticipantPortal() {
           </div>
           <main className="lighthouse-content participant-content">
             <div className="participant-intro"><span className="lighthouse-kicker">{view.label.toUpperCase()}</span><h1>{view.title}</h1><p className="lighthouse-lede">{view.lede}</p></div>
-            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} documents={documents} onUpload={uploadDocument} /> : activeView === "applications" ? <JobTrackerView /> : activeView === "interviews" ? <InterviewPrepView session={session} profile={profile} onMessage={setMessage} /> : activeView === "home" ? <>
+            {activeView === "documents" ? <DocumentsView tab={documentTab} setTab={setDocumentTab} search={documentSearch} setSearch={setDocumentSearch} documents={documents} onUpload={uploadDocument} /> : activeView === "applications" ? <JobTrackerView session={session} /> : activeView === "interviews" ? <InterviewPrepView session={session} profile={profile} onMessage={setMessage} /> : activeView === "home" ? <>
               <div className="participant-stat-grid"><div><BriefcaseBusiness size={20} /><b>0</b><span>Saved opportunities</span></div><div><Clipboard size={20} /><b>0</b><span>Applications in progress</span></div><div><Check size={20} /><b>0</b><span>Interviews coming up</span></div></div>
               <div className="participant-card-grid"><section className="participant-card"><span className="lighthouse-kicker">NEXT STEP</span><h2>Save an opportunity to get started</h2><p>When a job is shared with you, save it here so you can open it later and work through the application at your pace.</p><button className="outline-button" onClick={() => setActiveView("saved")}>View saved opportunities <ArrowRight size={15} /></button></section><section className="participant-card"><span className="lighthouse-kicker">YOUR SUPPORT</span><h2>Need help with an application?</h2><p>Your staff can help you review an opportunity, prepare answers, and keep track of what is left to do.</p><button className="outline-button" onClick={() => setActiveView("messages")}>Open messages <ArrowRight size={15} /></button></section></div>
             </> : <section className="participant-empty"><div className="connected-icon">{activeView === "messages" ? <MessageCircle size={20} /> : <BriefcaseBusiness size={20} />}</div><h2>{activeView === "profile" ? profile.participant.displayName : `Nothing here yet`}</h2><p>{activeView === "saved" ? "Saved opportunities shared with you will appear here." : activeView === "applications" ? "Applications you begin will appear here with their next step." : activeView === "interviews" ? "Upcoming interviews and preparation notes will appear here." : activeView === "messages" ? "Messages from your support team will appear here." : `Connected to ${profile.organization.name}.`}</p></section>}
