@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_29_173000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_29_184500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -172,6 +172,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_29_173000) do
     t.string "organization_id", null: false
     t.string "participant_id", null: false
     t.string "site_key", null: false
+    t.string "source", default: "page_observed", null: false
     t.string "status", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id", "participant_id", "site_key"], name: "index_application_accounts_on_tenant_participant_site", unique: true
