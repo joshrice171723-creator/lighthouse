@@ -11,6 +11,8 @@ Rails.application.routes.draw do
       post "participant/interview-prep" => "interview_prep#index"
       post "participant/interview-prep/save" => "interview_prep#create"
       post "interview-prep/metrics" => "interview_prep_metrics#create"
+      post "workforce/records" => "workforce#create"
+      post "workforce/report" => "workforce#report"
     end
   end
 
