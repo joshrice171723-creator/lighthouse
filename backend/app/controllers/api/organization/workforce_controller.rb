@@ -152,7 +152,7 @@ class Api::Organization::WorkforceController < ApplicationController
     return render json: { error: "Participant is not in this organization." }, status: :not_found unless participant
 
     consents = ParticipantConsent.where(participant_id: participant.id, organization_id: staff_session.organization_id, status: "granted", revoked_at: nil)
-    revoked = consents.update_all(status: "revoked", revoked_at: Time.current, updated_at: Time.current)
+    revoked = consents.update_all(status: "revoked", revoked_at: Time.current)
     render json: { participantId: participant.id, organizationId: staff_session.organization_id, revokedCount: revoked }
   end
 
