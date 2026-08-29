@@ -43,5 +43,7 @@ test("Rails demo seed stays synthetic and repeatable", () => {
   assert.match(source, /synthetic-local-demo/);
   assert.match(source, /demo-job-1/);
   assert.match(source, /demo-participant-session/);
+  assert.match(source, /demo-participant-#{number}/);
+  assert.match(source, /Synthetic Participant #{number}/);
   assert.match(source, /robins-house\.test/);
 });

@@ -35,6 +35,17 @@ consent = ParticipantConsent.find_or_initialize_by(id: "demo-consent")
 consent.assign_attributes(participant_id: participant.id, organization_id: organization.id, consent_type: "employment_outcomes", version: "v1", status: "granted", recorded_at: now, recorded_by_membership_id: staff.id, revoked_at: nil)
 consent.save!
 
+4.times do |index|
+  number = index + 2
+  synthetic_participant = ParticipantProfile.find_or_initialize_by(id: "demo-participant-#{number}")
+  synthetic_participant.assign_attributes(organization_id: organization.id, email: "participant#{number}.login@robins-house.test", display_name: "Synthetic Participant #{number}", location_id: location.id, sponsor_membership_id: staff.id, status: "active", consent_version: "employment-outcomes-v1")
+  synthetic_participant.save!
+
+  synthetic_consent = ParticipantConsent.find_or_initialize_by(id: "demo-consent-#{number}")
+  synthetic_consent.assign_attributes(participant_id: synthetic_participant.id, organization_id: organization.id, consent_type: "employment_outcomes", version: "v1", status: "granted", recorded_at: now, recorded_by_membership_id: staff.id, revoked_at: nil)
+  synthetic_consent.save!
+end
+
 [
   ["demo-job-1", "Customer Success Specialist", "Acme Support", "Remote · United States", "saved"],
   ["demo-job-2", "Workforce Program Coordinator", "Community Pathways", "Oklahoma City, OK", "applied"]
