@@ -29,6 +29,7 @@ test('employment report aggregates a complete synthetic workforce journey withou
       platform.saveEmploymentSupport(session, { kind: 'enrollment', participantId: current.participant.id, enrollmentDate: '2026-08-01', status: 'active' });
       platform.saveEmploymentSupport(session, { kind: 'service', participantId: current.participant.id, serviceType: 'Job-search assistance', serviceDate: '2026-08-05' });
       platform.saveEmploymentSupport(session, { kind: 'job_activity', participantId: current.participant.id, activityType: 'application', activityDate: '2026-08-06' });
+      if (index === 1) platform.saveEmploymentSupport(session, { kind: 'job_opportunity', participantId: current.participant.id, employerName: 'Synthetic Employer', jobTitle: 'Support Specialist', status: 'offer', appliedAt: '2026-08-07', interviewAt: '2026-08-08', offerAt: '2026-08-09' });
       if (index < 5) {
         const placement = platform.saveEmploymentSupport(session, { kind: 'placement', participantId: current.participant.id, employerName: 'Synthetic Employer', jobTitle: 'Support Specialist', startDate: '2026-08-10' });
         platform.saveEmploymentSupport(session, { kind: 'retention', participantId: current.participant.id, jobPlacementId: placement.id, checkinDate: '2026-09-09', daysSinceStart: 30, stillEmployed: true });
@@ -40,7 +41,7 @@ test('employment report aggregates a complete synthetic workforce journey withou
     assert.equal(report.privacy.participantCount, 5);
     assert.equal(report.privacy.consentedParticipantCount, 5);
     assert.equal(report.privacy.suppressed, false);
-    assert.deepEqual(report.metrics, { enrolledParticipants: 5, employmentGoalsRecorded: 5, servicesDelivered: 5, jobActivitiesRecorded: 5, placementsStarted: 4, retentionCheckins: 4, retainedAt30Days: 4, retainedAt60Days: 0, retainedAt90Days: 0, noOutcomeExits: 1 });
+    assert.deepEqual(report.metrics, { enrolledParticipants: 5, employmentGoalsRecorded: 5, servicesDelivered: 5, jobActivitiesRecorded: 5, applicationsSubmitted: 1, interviewsRecorded: 1, offersRecorded: 1, placementsStarted: 4, retentionCheckins: 4, retainedAt30Days: 4, retainedAt60Days: 0, retainedAt90Days: 0, noOutcomeExits: 1 });
     assert.deepEqual(report.missingData, { consent: 0, employmentGoal: 0, enrollment: 0, outcomeOrExit: 0 });
     assert.equal(Object.hasOwn(report, 'participants'), false);
     assert.equal(JSON.stringify(report).includes('Synthetic Participant'), false);
@@ -67,7 +68,7 @@ test('employment writes and reports enforce staff role and tenant scope, includi
     assert.throws(() => first.platform.employmentReport('not-a-session'), /invalid or expired/);
     const empty = second.platform.employmentReport(second.session);
     assert.equal(empty.empty, true);
-    assert.deepEqual(empty.metrics, { enrolledParticipants: 0, employmentGoalsRecorded: 0, servicesDelivered: 0, jobActivitiesRecorded: 0, placementsStarted: 0, retentionCheckins: 0, retainedAt30Days: 0, retainedAt60Days: 0, retainedAt90Days: 0, noOutcomeExits: 0 });
+    assert.deepEqual(empty.metrics, { enrolledParticipants: 0, employmentGoalsRecorded: 0, servicesDelivered: 0, jobActivitiesRecorded: 0, applicationsSubmitted: 0, interviewsRecorded: 0, offersRecorded: 0, placementsStarted: 0, retentionCheckins: 0, retainedAt30Days: 0, retainedAt60Days: 0, retainedAt90Days: 0, noOutcomeExits: 0 });
     assert.deepEqual(empty.privacy, { minimumCohort: 5, participantCount: 0, consentedParticipantCount: 0, suppressed: false });
   } finally { first.platform.close(); second.platform.close(); fs.rmSync(first.dir, { recursive: true, force: true }); fs.rmSync(second.dir, { recursive: true, force: true }); }
 });
